@@ -1,3 +1,9 @@
+# YourTV V2
+
+آخر نسخة تطوير: **4.2**. راجع [التعديلات وحالة الاختبار والقيود](V2-NOTES.md) قبل التثبيت.
+
+نسخة تطوير بتوزيع موحد للشاشة الرئيسية وشاشة التوقف مع الحفاظ على التحكم بالجوال.
+
 > **YourTV** — نسخة خاصة من [تلفزيونك](https://github.com/tshi-dev/UrTV): بدون الأسهم، ومكانها مواقيت الصلوات الخمس والصلاة التالية؛
 > التاريخ «الثلاثاء ٩ (٥) جمادى الأولى ١٤٤٨ هـ»؛ عدّاد يتنقل كل ١٥ ثانية بين رمضان والعيدين واليوم الوطني ويوم التأسيس
 > (بالأيام، وفي آخر يوم عدّ تنازلي بالثواني ثم التهنئة)؛ بطاقة جنب الساعة تتبدل كل ١٠ ثوانٍ (آية، حديث، الطقس، المباريات)؛
@@ -108,8 +114,8 @@ src/template.html     the screen (HTML/CSS/JS, no framework); edit this, then ru
 src/build.py          builds the two pages in dist/
 dist/urtv.html        stand-alone page, fonts and photos inlined: open in any browser (F = full screen), works offline
 dist/tv.html          light page the Android app loads (0.1 MB); the app serves fonts and photos from disk
-android/app           the screensaver app (sa.urtv.screensaver): DreamService, settings, auto-update
-android/launcher      the home screen (sa.urtv.home)
+android/app           the screensaver app (sa.yourtv.v2.screensaver): DreamService, settings, auto-update
+android/launcher      the home screen (sa.yourtv.v2.home)
 assets/               fonts, bundled photos, Arabic team names, verse and hadith texts
 photos/               the hosted photo set (5 shown per 4 days, rotating every 30 min)
 optimize/             TV tools (Python ADB client, no adb binary needed); lists/ says what may be turned off

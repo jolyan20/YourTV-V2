@@ -1,4 +1,4 @@
-package sa.urtv.home;
+package sa.yourtv.v2.home;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -12,10 +12,10 @@ import java.util.Map;
  * The favourites row from ADB, for agents and scripts. Only the shell can send these: the manifest requires
  * android.permission.DUMP, which apps can't hold.
  *
- *   am broadcast -n sa.urtv.home/.DockReceiver -a sa.urtv.home.GET_DOCK
- *   am broadcast -n sa.urtv.home/.DockReceiver -a sa.urtv.home.LIST_APPS
- *   am broadcast -n sa.urtv.home/.DockReceiver -a sa.urtv.home.SET_DOCK --es apps pkg1,pkg2,...
- *   am broadcast -n sa.urtv.home/.DockReceiver -a sa.urtv.home.RESET_DOCK
+ *   am broadcast -n sa.yourtv.v2.home/.DockReceiver -a sa.yourtv.v2.home.GET_DOCK
+ *   am broadcast -n sa.yourtv.v2.home/.DockReceiver -a sa.yourtv.v2.home.LIST_APPS
+ *   am broadcast -n sa.yourtv.v2.home/.DockReceiver -a sa.yourtv.v2.home.SET_DOCK --es apps pkg1,pkg2,...
+ *   am broadcast -n sa.yourtv.v2.home/.DockReceiver -a sa.yourtv.v2.home.RESET_DOCK
  *
  * The answer is in the "data" of am's output. optimize/dock.sh wraps all four. People use «ترتيب المفضلة»
  * (DockActivity) instead.
@@ -26,20 +26,20 @@ public class DockReceiver extends BroadcastReceiver {
         String action = String.valueOf(i.getAction());
         Map<String, String> apps = Dock.launchable(c);
         switch (action) {
-            case "sa.urtv.home.LIST_APPS": {
+            case "sa.yourtv.v2.home.LIST_APPS": {
                 StringBuilder b = new StringBuilder();
                 for (Map.Entry<String, String> e : apps.entrySet()) b.append(e.getKey()).append(" | ").append(e.getValue()).append('\n');
                 setResultData(b.toString().trim());
                 return;
             }
-            case "sa.urtv.home.GET_DOCK":
+            case "sa.yourtv.v2.home.GET_DOCK":
                 setResultData("dock: " + String.join(",", Dock.shown(c, apps)));
                 return;
-            case "sa.urtv.home.RESET_DOCK":
+            case "sa.yourtv.v2.home.RESET_DOCK":
                 Dock.reset(c);
                 setResultData("dock: " + String.join(",", Dock.shown(c, apps)) + " (defaults)");
                 return;
-            case "sa.urtv.home.SET_DOCK": {
+            case "sa.yourtv.v2.home.SET_DOCK": {
                 String raw = i.getStringExtra("apps");
                 if (raw == null) { setResultData("error: add --es apps pkg1,pkg2,..."); return; }
                 List<String> row = new ArrayList<>(), skipped = new ArrayList<>();

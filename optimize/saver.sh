@@ -14,12 +14,12 @@
 #   optimize/saver.sh langs Arabic,English         episodes card: English Arabic Korean Japanese Turkish Spanish
 #                                                  French Hindi German  ("" = all)
 #   optimize/saver.sh update                       download the latest screen now
-# Only ADB can change these (sa.urtv.screensaver/.SaverReceiver needs the shell's DUMP).
+# Only ADB can change these (sa.yourtv.v2.screensaver/.SaverReceiver needs the shell's DUMP).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 PY="${PY:-optimize/venv/bin/python}"
 send() {   # $1 action, $2 extras; prints the receiver's answer (the "data" of am broadcast)
-  "$PY" -I optimize/tv.py "am broadcast -n sa.urtv.screensaver/.SaverReceiver -a sa.urtv.screensaver.$1 ${2:-}" \
+  "$PY" -I optimize/tv.py "am broadcast -n sa.yourtv.v2.screensaver/.SaverReceiver -a sa.yourtv.v2.screensaver.$1 ${2:-}" \
     | sed -n '/data="/,$p' | sed '1s/.*data="//; $s/"$//'
 }
 quote() {  # one shell-safe argument for the TV's shell

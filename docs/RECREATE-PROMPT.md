@@ -103,7 +103,7 @@ All three are built identically — small gold label, big value, small sub-line 
 
 ## The Android app (what we actually shipped)
 
-- A `DreamService` screensaver (`sa.urtv.screensaver/.ScreenDream`) started by the TV's own idle timer, plus a full-screen preview activity; any remote key closes it.
+- A `DreamService` screensaver (`sa.yourtv.v2.screensaver/.ScreenDream`) started by the TV's own idle timer, plus a full-screen preview activity; any remote key closes it.
 - The WebView loads a light build of the page (`dist/tv.html`, 0.1 MB); the app answers its font and photo requests from the APK and a photo cache on disk (`shouldInterceptRequest`), so nothing waits on the network.
 - Settings: 194 Saudi cities and towns in the 13 regions plus an online place search; up to 10 teams (browse leagues or search TheSportsDB; Arabic names from a table, then Wikidata, then transliteration); the card beside the clock; episode filters. They reach the page as a URL fragment (`#city=..&lat=..&lon=..&teams=id,id&panel=..`) — a `?query` on `file://` fails in WebView.
 - Agents set everything over ADB through shell-only broadcast receivers (`optimize/saver.sh`, `optimize/dock.sh`).

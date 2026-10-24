@@ -125,7 +125,7 @@ check("Arabic team names: every character in Thmanyah", not missing, missing)
 cfg = ET.parse(ROOT / "android/launcher/src/main/res/values/config.xml").getroot()
 arr = {a.get("name"): [i.text for i in a] for a in cfg.findall("string-array")}
 check("launcher: no dock app is also hidden", not set(arr["dock_apps"]) & set(arr["hidden_apps"]))
-check("launcher: screensaver app not hidden", "sa.urtv.screensaver" not in arr["hidden_apps"])
+check("launcher: screensaver app not hidden", "sa.yourtv.v2.screensaver" not in arr["hidden_apps"])
 
 # ---- optimize: never disable a kept package
 def pkgs(path):

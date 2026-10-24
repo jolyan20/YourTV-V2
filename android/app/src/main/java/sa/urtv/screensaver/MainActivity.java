@@ -1,4 +1,4 @@
-package sa.urtv.screensaver;
+package sa.yourtv.v2.screensaver;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
@@ -72,7 +72,12 @@ public class MainActivity extends Activity {
             case KeyEvent.KEYCODE_DPAD_LEFT:     // the screens (family, each person): next and back
             case KeyEvent.KEYCODE_DPAD_RIGHT:
                 if (e.getAction() == KeyEvent.ACTION_UP && web != null)
-                    web.evaluateJavascript("window.switchScreen && switchScreen(" + (e.getKeyCode() == KeyEvent.KEYCODE_DPAD_LEFT ? 1 : -1) + ")", null);
+                    web.evaluateJavascript("window.navigateCard && navigateCard(" + (e.getKeyCode() == KeyEvent.KEYCODE_DPAD_LEFT ? 1 : -1) + ")", null);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_UP:
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+                if (e.getAction() == KeyEvent.ACTION_UP && web != null)
+                    web.evaluateJavascript("window.switchScreen && switchScreen(" + (e.getKeyCode() == KeyEvent.KEYCODE_DPAD_DOWN ? 1 : -1) + ")", null);
                 return true;
             case KeyEvent.KEYCODE_VOLUME_UP:
             case KeyEvent.KEYCODE_VOLUME_DOWN:

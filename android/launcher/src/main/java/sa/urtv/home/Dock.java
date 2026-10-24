@@ -1,4 +1,4 @@
-package sa.urtv.home;
+package sa.yourtv.v2.home;
 
 import android.content.Context;
 import android.content.Intent;
@@ -16,8 +16,8 @@ import java.util.Map;
 /** The favourites row: one set of rules for the home screen, its «ترتيب المفضلة» screen and ADB (DockReceiver). */
 final class Dock {
     static final int MIN = 5;    // the row never shows fewer apps than this
-    static final int MAX = 10;   // tiles share the row width, so 10 still fit at 1080p
-    static final String CHANGED = "sa.urtv.home.DOCK_CHANGED";   // tells a running home screen to redraw
+    static final int MAX = 14;   // tiles share the row width, so 10 still fit at 1080p
+    static final String CHANGED = "sa.yourtv.v2.home.DOCK_CHANGED";   // tells a running home screen to redraw
 
     private Dock() {}
 

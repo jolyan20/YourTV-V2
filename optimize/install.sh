@@ -7,11 +7,11 @@
 #                                  github.com/truefedex/tv-bro) and SmartTube (YouTube without ads,
 #                                  github.com/yuliskov/SmartTube), the build that fits the TV's processor
 # The first install of the screensaver replaces an APK signed with another key: uninstall the old one first
-# (pm uninstall sa.urtv.screensaver) — this script does that only if a plain install fails.
+# (pm uninstall sa.yourtv.v2.screensaver) — this script does that only if a plain install fails.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 PY="${PY:-optimize/venv/bin/python}"
-REL=https://github.com/jolyan20/YourTV/releases/download/${APK_TAG:-apk-latest}   # APK_TAG=v3.N: that numbered build
+REL=https://github.com/jolyan20/YourTV-V2/releases/download/${APK_TAG:-apk-latest}   # APK_TAG=v3.N: that numbered build
 what="${1:?usage: optimize/install.sh saver|launcher|all|extras}"
 
 push_install() {   # $1 apk name, $2 package
@@ -24,7 +24,7 @@ push_install() {   # $1 apk name, $2 package
     if grep -qE 'UPDATE_INCOMPATIBLE|signatures do not match' <<< "$out"; then
       echo "An older $2 signed with another key is installed: removing it, then installing again."
       # removing the home app while the stock one is off would leave the TV with no home at all
-      [ "$2" = sa.urtv.home ] && "$PY" -I optimize/tv.py "pm enable ${STOCK%%/*}" > /dev/null || true
+      [ "$2" = sa.yourtv.v2.home ] && "$PY" -I optimize/tv.py "pm enable ${STOCK%%/*}" > /dev/null || true
       "$PY" -I optimize/tv.py "pm uninstall $2" || true
       "$PY" -I optimize/tv.py "pm install -r /data/local/tmp/$1" | grep Success
     else
@@ -65,12 +65,12 @@ if [ "$what" = extras ]; then
 fi
 
 if [ "$what" = saver ] || [ "$what" = all ]; then
-  push_install urtv-screensaver.apk sa.urtv.screensaver
+  push_install urtv-screensaver.apk sa.yourtv.v2.screensaver
   printf '%s\n' \
     "settings put secure screensaver_enabled 1" \
-    "settings put secure screensaver_components sa.urtv.screensaver/.ScreenDream" \
-    "settings put secure screensaver_default_component sa.urtv.screensaver/.ScreenDream" \
-    "am start -n sa.urtv.screensaver/.SettingsActivity" \
+    "settings put secure screensaver_components sa.yourtv.v2.screensaver/.ScreenDream" \
+    "settings put secure screensaver_default_component sa.yourtv.v2.screensaver/.ScreenDream" \
+    "am start -n sa.yourtv.v2.screensaver/.SettingsActivity" \
     | "$PY" -I optimize/tv.py --batch
   echo "Screensaver installed and selected. Its settings screen is open on the TV."
 fi
@@ -85,8 +85,8 @@ if [ "$what" = launcher ] || [ "$what" = all ]; then
   echo "Stock home: $STOCK"
 
   # 1. The new home must be installed and working BEFORE anything is disabled.
-  push_install urtv-home.apk sa.urtv.home
-  "$PY" -I optimize/tv.py "pm grant sa.urtv.home android.permission.ACCESS_FINE_LOCATION" || true
+  push_install urtv-home.apk sa.yourtv.v2.home
+  "$PY" -I optimize/tv.py "pm grant sa.yourtv.v2.home android.permission.ACCESS_FINE_LOCATION" || true
 
   # 2. Arm the safety switch on the TV: it restores the stock home in 300 s unless we confirm (slow ADB needs time).
   "$PY" -I optimize/tv.py --push-b64 optimize/deadman.sh /data/local/tmp/deadman.sh
@@ -98,10 +98,10 @@ if [ "$what" = launcher ] || [ "$what" = all ]; then
 
   # 3. Switch. Setup app first, then the stock home (this order avoided the black screen).
   printf '%s\n' \
-    "cmd package set-home-activity --user 0 sa.urtv.home/.MainActivity" \
+    "cmd package set-home-activity --user 0 sa.yourtv.v2.home/.MainActivity" \
     "pm disable-user --user 0 com.google.android.tungsten.setupwraith" \
     "pm disable-user --user 0 ${STOCK%%/*}" \
-    "cmd package set-home-activity --user 0 sa.urtv.home/.MainActivity" \
+    "cmd package set-home-activity --user 0 sa.yourtv.v2.home/.MainActivity" \
     "am force-stop com.android.tv.settings" \
     "input keyevent KEYCODE_HOME" \
     | "$PY" -I optimize/tv.py --batch
@@ -110,14 +110,14 @@ if [ "$what" = launcher ] || [ "$what" = all ]; then
   for try in 1 2 3; do
     sleep 6
     if "$PY" -I optimize/tv.py "dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity'" \
-         | grep -q sa.urtv.home; then ours=yes; break; fi
+         | grep -q sa.yourtv.v2.home; then ours=yes; break; fi
     "$PY" -I optimize/tv.py "input keyevent KEYCODE_HOME" > /dev/null
   done
   if [ "$ours" = yes ]; then
     "$PY" -I optimize/tv.py "touch /data/local/tmp/home_ok"
     # the switch may have fired already if ADB was very slow: then the stock home is back, say so and stop
     if ! "$PY" -I optimize/tv.py "cmd package resolve-activity --brief -c android.intent.category.HOME -a android.intent.action.MAIN" \
-         | grep -q sa.urtv.home; then
+         | grep -q sa.yourtv.v2.home; then
       echo "!! The safety switch put the stock home back (ADB was too slow). Nothing is broken: run the same command again."
       exit 1
     fi

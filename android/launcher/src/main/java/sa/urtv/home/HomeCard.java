@@ -1,4 +1,4 @@
-package sa.urtv.home;
+package sa.yourtv.v2.home;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -22,8 +22,8 @@ import java.util.Collections;
  * off no WebView is created. Settings come from the screensaver app's ConfigProvider (same signing key).
  */
 final class HomeCard {
-    private static final Uri CONFIG = Uri.parse("content://sa.urtv.screensaver.config");
-    private static final String FONTS = "https://raw.githubusercontent.com/jolyan20/YourTV/master/assets/fonts/";
+    private static final Uri CONFIG = Uri.parse("content://sa.yourtv.v2.screensaver.config");
+    private static final String FONTS = "https://raw.githubusercontent.com/jolyan20/YourTV-V2/master/assets/fonts/";
 
     private final Activity activity;
     private final ViewGroup parent;
@@ -47,6 +47,8 @@ final class HomeCard {
     }
 
     /** onPause: no timers or network while an app is in front. */
+    void navigate(int direction) { if (web != null) web.evaluateJavascript("window.navigateCard && navigateCard(" + direction + ")", null); }
+    void focusCards(boolean on) { if (web != null) web.evaluateJavascript("document.querySelector('.week').classList.toggle('remote-focus'," + on + ")", null); }
     void pause() {
         if (web != null) { web.onPause(); web.pauseTimers(); }
     }
@@ -61,13 +63,13 @@ final class HomeCard {
 
     private String readUrl() {
         try (Cursor c = activity.getContentResolver().query(CONFIG, null, null, null, null)) {
-            if (c == null || !c.moveToFirst()) return null;
+            if (c == null || !c.moveToFirst()) return "file:///android_asset/web/tv.html#panel=verse&home=1";
             String frag = c.getString(0), panel = c.getString(1);
-            if (frag == null || panel == null || "none".equals(panel)) return null;
+            if (frag == null) return null;
             frag = frag.replaceAll("(^|&)(panel|week)=[^&]*", "");   // the screensaver's own card choice
-            return "file:///android_asset/web/tv.html#" + frag + "&panel=" + panel + "&widget=1";
+            return "file:///android_asset/web/tv.html#" + frag + "&panel=" + (panel == null || "none".equals(panel) ? "verse" : panel) + "&home=1";
         } catch (RuntimeException e) {
-            return null;   // screensaver app missing or too old
+            return "file:///android_asset/web/tv.html#panel=verse&home=1";
         }
     }
 
@@ -87,6 +89,16 @@ final class HomeCard {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest r) {
                 String s = r.getUrl().toString();
+                if (s.startsWith("https://raw.githubusercontent.com/jolyan20/YourTV-V2/master/assets/backgrounds/")) {
+                    String name = s.substring(s.lastIndexOf('/') + 1);
+                    if (name.matches("[A-Za-z0-9_-]+\\.jpg")) {
+                        try {
+                            return new WebResourceResponse("image/jpeg", null, 200, "OK",
+                                Collections.singletonMap("Access-Control-Allow-Origin", "*"),
+                                activity.getAssets().open("wallpapers/" + name));
+                        } catch (java.io.IOException ignored) { }
+                    }
+                }
                 if (s.startsWith(FONTS)) {
                     String name = s.substring(FONTS.length());
                     if (name.matches("[A-Za-z0-9_-]+\\.woff2")) {
@@ -102,13 +114,14 @@ final class HomeCard {
         });
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
+        s.setMediaPlaybackRequiresUserGesture(false);
         s.setDomStorageEnabled(true);
         s.setAllowFileAccess(true);
         // same as the screensaver: the page calls its data APIs directly from file://
         s.setAllowFileAccessFromFileURLs(true);
         s.setAllowUniversalAccessFromFileURLs(true);
         s.setCacheMode(WebSettings.LOAD_NO_CACHE);
-        parent.addView(web, params);
+        parent.addView(web, 0, params);
         url = u;
         web.loadUrl(u);
     }

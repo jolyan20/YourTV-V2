@@ -1,4 +1,4 @@
-package sa.urtv.screensaver;
+package sa.yourtv.v2.screensaver;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -32,7 +32,7 @@ public class ControlService extends Service {
         try {
             JSONObject d = ControlStore.state(c).optJSONObject("display");
             if (d != null && d.has("startOnPower") && !d.optBoolean("startOnPower")) return;
-            c.startActivity(new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+            c.startActivity(new Intent().setClassName("sa.yourtv.v2.home", "sa.yourtv.v2.home.MainActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP));
         } catch (Exception ignored) { }
     }
     private final android.content.SharedPreferences.OnSharedPreferenceChangeListener gameChanged = (p, key) -> {

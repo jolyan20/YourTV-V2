@@ -1,4 +1,4 @@
-package sa.urtv.screensaver;
+package sa.yourtv.v2.screensaver;
 
 import android.annotation.SuppressLint;
 import android.content.Context;

@@ -245,8 +245,8 @@ optimize/keep.sh                                  # must end with «Protected fe
 optimize/run.sh status                            # every step ✓
 grep '!!' optimize/run/report.md || echo none     # must print «none»
 ```
-- `report.md` shows Home as `sa.urtv.home` (or the stock home if we used `SKIP_LAUNCHER=1`) and the screensaver
-  as `sa.urtv.screensaver`.
+- `report.md` shows Home as `sa.yourtv.v2.home` (or the stock home if we used `SKIP_LAUNCHER=1`) and the screensaver
+  as `sa.yourtv.v2.screensaver`.
 - You looked at the step 5 screenshots yourself and they show my city, my card and my favourites.
 - I tried voice from the remote and casting from a phone, and both work.
 

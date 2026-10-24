@@ -82,14 +82,14 @@
 <body>
 
 <div id="pinbox">
-  <h1>تلفزيوني</h1>
+  <h1>التحكم بالشاشات</h1><select id="device-select" aria-label="الشاشة" style="width:auto" onchange="location.search='device='+encodeURIComponent(this.value)"><option value="local">TCL</option></select>
   <p class="muted">اكتب الرمز السري (٦ أرقام) الظاهر في إعدادات شاشة التوقف على التلفزيون، تحت «التحكم من الجوال».</p>
   <input id="pin" inputmode="numeric" maxlength="6" autocomplete="one-time-code" enterkeyhint="go">
   <button class="main" onclick="login()">دخول</button>
 </div>
 
 <div id="app" hidden>
-  <header><h1>تلفزيوني</h1><button class="ghost small" onclick="logout()">خروج</button></header>
+  <header><h1>التحكم بالشاشات</h1><select id="device-select" aria-label="الشاشة" style="width:auto" onchange="location.search='device='+encodeURIComponent(this.value)"><option value="local">TCL</option></select><button class="ghost small" onclick="logout()">خروج</button></header>
   <nav class="tabs" id="tabs"></nav>
 
   <section id="s-home">
@@ -120,14 +120,15 @@
     <div class="card">
       <h2>💬 رسالة على الشاشة</h2>
       <div class="chips" id="presets"></div>
+      <label>اسم المرسل</label><input id="msg-sender" maxlength="50" placeholder="الاسم الذي يظهر تحت الرسالة">
       <label>الرسالة</label>
       <textarea id="msg-text" maxlength="140" placeholder="اكتب رسالتك"></textarea>
       <button type="button" class="mic" onclick="speak()">🎤 تحدث وتنكتب الرسالة</button>
       <div class="row">
         <div><label>النوع</label>
-          <select id="msg-style"><option value="info">💬 عادية</option><option value="welcome">🌹 ترحيب</option><option value="urgent">⚠️ مهمة</option></select></div>
+          <select id="msg-style"><option value="info">✉️ رسالة</option><option value="alert">🔔 تنبيه</option><option value="welcome">👋 ترحيب</option><option value="urgent">⚠️ تحذير</option><option value="reminder">⏰ تذكير</option><option value="congrats">🎉 تهنئة</option><option value="announcement">📢 إعلان</option><option value="thanks">💐 شكر وتقدير</option></select></div>
         <div><label>تبقى</label>
-          <select id="msg-dur"><option value="5">٥ دقائق</option><option value="10" selected>١٠ دقائق</option><option value="30">٣٠ دقيقة</option><option value="60">ساعة</option><option value="180">٣ ساعات</option><option value="0">لين أمسحها</option></select></div>
+          <input id="msg-dur" type="number" min="1" max="1440" value="5" step="1" aria-label="مدة العرض بالدقائق"><small>مدة العرض بالدقائق · الافتراضي 5 دقائق</small></div>
       </div>
       <button class="main" onclick="sendMessage()">إرسال للشاشة</button>
       <button class="ghost" style="width:100%;margin-top:8px" onclick="clearMessage()">مسح الرسالة</button>
@@ -180,6 +181,13 @@
     <div class="card"><ul id="fam-list"></ul></div>
   </section>
 
+<section id="s-video"><div class="card"><h2>🎞️ فيديو الأذان</h2>      <p class="muted">فيديو الأذان يظهر مكان البطاقات مع الصوت، ثم تعود البطاقات عند انتهائه. MP4 حتى 64 ميجابايت، ويفضّل H.264 بصوت AAC. الفيديو محفوظ على هذا التلفزيون.</p>
+      <div class="up"><span id="ad-video-main-l">فيديو الأذان الأساسي</span><label class="ghost small">رفع فيديو<input type="file" accept="video/mp4,.mp4" onchange="upload('adhan-video-main',this.files[0])"></label><button class="x" id="ad-video-main-x" onclick="unload('adhan-video-main')">×</button></div>
+      <div class="up"><span id="ad-video-fajr-l">فيديو أذان الفجر (اختياري)</span><label class="ghost small">رفع فيديو<input type="file" accept="video/mp4,.mp4" onchange="upload('adhan-video-fajr',this.files[0])"></label><button class="x" id="ad-video-fajr-x" onclick="unload('adhan-video-fajr')">×</button></div>
+      <p class="muted">يُشغّل الملف الصوتي أدناه إذا لم يوجد فيديو أو تعذّر تشغيله. لا يُستخدم يوتيوب للأذان.</p>
+      <div class="up"><span id="ad-main-l">ملف الأذان الأساسي (من الجوال أو الكمبيوتر)</span><label class="ghost small">رفع<input type="file" accept="audio/*" onchange="upload('adhan-main', this.files[0])"></label><button class="x" onclick="unload('adhan-main')" id="ad-main-x">×</button></div>
+      <div class="up"><span id="ad-fajr-l">ملف أذان الفجر (اختياري)</span><label class="ghost small">رفع<input type="file" accept="audio/*" onchange="upload('adhan-fajr', this.files[0])"></label><button class="x" onclick="unload('adhan-fajr')" id="ad-fajr-x">×</button></div>
+</div></section>
   <section id="s-screen">
     <div class="card">
       <h2>📍 المدينة</h2>
@@ -217,14 +225,13 @@
         <div><label>الصلوات</label><select id="adhan-mode"><option value="full">الأذان كامل</option><option value="takbir">أول تكبيرتين</option><option value="off">بدون صوت</option></select></div>
         <div><label>الفجر</label><select id="adhan-fajr-mode"><option value="full">الأذان كامل</option><option value="takbir">أول تكبيرتين</option><option value="off">بدون صوت</option></select></div>
       </div>
-      <p class="muted">ملف أذان من عندك يشتغل صوت بس، بدون فيديو وبدون إعلانات:</p>
-      <div class="up"><span id="ad-main-l">ملف الأذان</span><label class="ghost small">رفع<input type="file" accept="audio/*" onchange="upload('adhan-main', this.files[0])"></label><button class="x" onclick="unload('adhan-main')" id="ad-main-x">×</button></div>
-      <div class="up"><span id="ad-fajr-l">ملف أذان الفجر (اختياري)</span><label class="ghost small">رفع<input type="file" accept="audio/*" onchange="upload('adhan-fajr', this.files[0])"></label><button class="x" onclick="unload('adhan-fajr')" id="ad-fajr-x">×</button></div>
+      <p class="muted">رفع الفيديو والملف الصوتي متاح في تبويب «فيديو الأذان».</p>
       <div class="switch"><span>بث الحرم المكي تلقائياً وقت صلاة الجمعة والتراويح</span><input id="auto-quran" type="checkbox"></div>
       <div class="switch"><span>تفتح الشاشة أول ما يشتغل التلفزيون</span><input id="start-power" type="checkbox"></div>
       <div class="switch"><span>صوت تنبيه مباريات فريقك (قبلها بساعة، وصافرة البداية)</span><input id="match-sound" type="checkbox"></div>
       <label>صوت الصافرة</label><select id="whistle"><option value="2">صافرة حقيقية</option><option value="1">صافرة ناعمة</option></select>
       <div class="switch"><span>تنبيه صغير وقت المهام والتذكيرات</span><input id="task-sound" type="checkbox"></div>
+<p class="muted">حدد إجازتي جهة الصرف: إذا وقع موعد الراتب داخلهما، يُنقل لأقرب يوم عمل قبل الإجازة أو بعدها (عند التعادل يُقدّم). الموعد الاستثنائي المعلن أدناه له الأولوية.</p><div class="row"><div><label>بداية إجازة الفطر</label><input type="date" id="salary-fitr-from"></div><div><label>نهاية إجازة الفطر</label><input type="date" id="salary-fitr-to"></div></div><div class="row"><div><label>بداية إجازة الأضحى</label><input type="date" id="salary-adha-from"></div><div><label>نهاية إجازة الأضحى</label><input type="date" id="salary-adha-to"></div></div><label>موعد صرف الراتب الاستثنائي حسب الإعلان (اختياري)</label><input type="date" id="salary-date"><p class="muted">الافتراضي يوم 27 ميلادي، الجمعة يُقدّم للخميس والسبت يؤخّر للأحد. أدخل الموعد المعلن عند تغييره في الأعياد.</p>
       <button class="main" onclick="saveDisplay()">حفظ إعدادات الشاشة</button>
     </div>
   </section>
@@ -363,11 +370,12 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const TABS = [['home','🏠 الرئيسية'],['screens','👥 الشاشات'],['message','💬 رسالة'],['tasks','✅ مهامي'],['reminders','💊 تذكيرات'],['family','🎂 مناسبات'],['wird','📖 الورد'],['game','🎮 اللعب'],['series','🎬 مسلسلاتي'],['alarm','⏰ المنبه'],['report','📊 التقرير'],['sleep','🌙 النوم'],['screen','🖥️ الشاشة']];
+const TABS = [['home','🏠 الرئيسية'],['video','🎞️ فيديو الأذان'],['screens','👥 الشاشات'],['message','💬 رسالة'],['tasks','✅ مهامي'],['reminders','💊 تذكيرات'],['family','🎂 مناسبات'],['wird','📖 الورد'],['game','🎮 اللعب'],['series','🎬 مسلسلاتي'],['alarm','⏰ المنبه'],['report','📊 التقرير'],['sleep','🌙 النوم'],['screen','🖥️ الشاشة']];
 const DAYS = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 const PRESETS = ['العشاء جاهز 🍽️','الغداء جاهز','حياكم الله 🌹','وقت النوم 🌙','لا تنسون أغراضكم'];
 const CARDS = [['adhkar','أذكار الصباح والمساء'],['verse','آية اليوم'],['hadith','حديث اليوم'],['wisdom','مختارات'],['summary','ملخص اليوم (الصباح)'],['stars','النجوم (للأطفال)'],['family','مناسبة اليوم (مع الصورة)'],['wird','الورد اليومي'],['tasks','مهامي وتذكيراتي'],['bedtime','وقت النوم'],['series','مسلسلاتي'],['weather','الطقس'],['matches','مباريات فرقك']];
 // the PIN is sent once; the TV answers with a session key (30 days), kept on this phone instead of the PIN
+const DEVICE=new URLSearchParams(location.search).get('device')||'local';
 let KEY = localStorage.getItem('tvkey') || '', STATE = {}, PREFS = null;
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -377,9 +385,9 @@ const t12 = hm => { const [h, m] = String(hm).split(':').map(Number); return (h 
 
 function toast(t, err){ const e = $('toast'); e.textContent = t; e.className = 'toast' + (err ? ' err' : ''); e.style.display = 'block'; clearTimeout(toast.h); toast.h = setTimeout(() => e.style.display = 'none', 2200); }
 async function api(path, body){
-  const r = await fetch(path, {method: body ? 'POST' : 'GET', headers: {'X-Key': KEY, 'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : undefined});
+  const r = await fetch(path, {method: body ? 'POST' : 'GET', headers: {'X-Device': DEVICE, 'X-Key': KEY, 'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : undefined});
   if(r.status === 401){ expired(); throw new Error('pin'); }
-  if(!r.ok) throw new Error('http ' + r.status);
+  if(!r.ok){if(r.status===503)toast('الشاشة المختارة غير متصلة، تأكد أنها مشغلة',true);throw new Error('http ' + r.status);}
   return r.json();
 }
 async function login(){
@@ -401,11 +409,14 @@ async function save(section, value, quiet){
 }
 
 async function start(){
+  const devicesResponse=await fetch('/api/devices',{headers:{'X-Key':KEY}});
+  if(devicesResponse.status===401){expired();return;}
+  const devices=await devicesResponse.json(); $('device-select').innerHTML=devices.map(d=>`<option value="${esc(d.id)}" ${d.id===DEVICE?'selected':''}>${esc(d.name)}</option>`).join('');
   STATE = await api('/api/state');
   $('pinbox').hidden = true; $('app').hidden = false;
   $('tabs').innerHTML = TABS.map(([k, t]) => `<button data-k="${k}">${t}</button>`).join('');
   $('tabs').onclick = e => { const k = e.target.dataset.k; if(k) openTab(k); };
-  openTab(localStorage.getItem('tvtab') || 'home');
+  openTab(location.hash.slice(1)||localStorage.getItem('tvtab') || 'home');
   $('rem-days').innerHTML = DAYS.map((d, i) => `<label><input type="checkbox" value="${i}" checked>${d}</label>`).join('');
   $('presets').innerHTML = PRESETS.map(p => `<button type="button">${esc(p)}</button>`).join('');
   $('presets').onclick = e => { if(e.target.tagName === 'BUTTON') $('msg-text').value = e.target.textContent; };
@@ -449,7 +460,7 @@ function render(){
       <button class="x" onclick="delItem('family', ${i})" aria-label="حذف">×</button></li>`; }).join('') : '<li class="muted">ما فيه مناسبات</li>';
   const sl = STATE.sleep || {};
   $('sleep-from').value = sl.from || '00:00'; $('sleep-to').value = sl.to || ''; $('sleep-off').checked = !!sl.off;
-  const d = STATE.display || {}, cards = d.cards || {};
+  const d = STATE.display || {}, cards = d.cards || {}; $('salary-date').value=d.salaryDate||''; ['fitr','adha'].forEach((k,i)=>{const h=(d.salaryHolidays||[])[i]||{}; $('salary-'+k+'-from').value=h.from||''; $('salary-'+k+'-to').value=h.to||'';});
   $('cards').innerHTML = CARDS.map(([k, t]) => `<div class="switch"><span>${t}</span><input type="checkbox" data-card="${k}" ${cards[k] === false ? '' : 'checked'}></div>`).join('');
   $('card-sec').value = String(d.cardSec || 30); $('photo-min').value = String(d.photoMin || 30);
   $('q-size').value = d.quranSize || 's'; $('q-pos').value = d.quranPos || 'tc';
@@ -460,7 +471,8 @@ function render(){
   $('whistle').value = d.whistle === '1' ? '1' : '2'; $('task-sound').checked = d.taskSound !== false;
   renderScreens(); renderReport(); renderAlarm(); renderRules();
   $('start-power').checked = d.startOnPower !== false;
-  $('ad-main-l').textContent = hasFile('adhan-main') ? '✔ ملف الأذان مرفوع' : 'ملف الأذان (يشتغل بدل الفيديو)'; $('ad-main-x').hidden = !hasFile('adhan-main');
+  ['main','fajr'].forEach(k=>{$('ad-video-'+k+'-l').textContent=(hasFile('adhan-video-'+k)?'✔ ':'')+(k==='main'?'فيديو الأذان الأساسي':'فيديو أذان الفجر');$('ad-video-'+k+'-x').hidden=!hasFile('adhan-video-'+k);});
+  $('ad-main-l').textContent = hasFile('adhan-main') ? '✔ ملف الأذان مرفوع' : 'الملف الصوتي الاحتياطي للأذان'; $('ad-main-x').hidden = !hasFile('adhan-main');
   $('ad-fajr-l').textContent = hasFile('adhan-fajr') ? '✔ ملف أذان الفجر مرفوع' : 'ملف أذان الفجر (اختياري)'; $('ad-fajr-x').hidden = !hasFile('adhan-fajr');
   const tk = (STATE.tmdb || {}).token || '';
   $('tmdb-state').textContent = tk ? '✔ المفتاح محفوظ: البحث بالعربي والبوسترات شغّالة' : 'بدون المفتاح يكون البحث بالإنجليزي وبدون مسلسلات عربية.';
@@ -604,10 +616,12 @@ function saveTmdb(){ const t = $('tmdb-token').value.trim(); if(t.length < 32) r
 // ---- files sent to the TV: the adhan, birthday photos ----
 async function upload(name, file){
   if(!file) return;
-  if(file.size > 12e6) return toast('الملف أكبر من ١٢ ميقا', true);
+  const video=name.startsWith('adhan-video-');
+  if(video && !/\.mp4$/i.test(file.name))return toast('اختر فيديو MP4',true);
+  if(file.size > (video?64e6:12e6)) return toast(video?'الفيديو أكبر من 64 ميجابايت':'الملف أكبر من 12 ميجابايت',true);
   toast('جاري الرفع…');
   try{
-    const r = await fetch('/api/upload?name=' + name, {method: 'POST', headers: {'X-Key': KEY, 'Content-Type': file.type || 'audio/mpeg'}, body: file});
+    const r = await fetch('/api/upload?name=' + name, {method: 'POST', headers: {'X-Device': DEVICE, 'X-Key': KEY, 'Content-Type': video ? 'video/mp4' : file.type || 'audio/mpeg'}, body: file});
     if(r.status === 401) return expired();
     if(!r.ok) return toast('نوع الملف غير مقبول', true);
     STATE = await api('/api/state'); render(); toast('تم الرفع ✔');
@@ -615,7 +629,7 @@ async function upload(name, file){
 }
 async function unload(name){
   if(!confirm('حذف الملف؟')) return;
-  try{ await fetch('/api/upload?name=' + name + '&del=1', {method: 'POST', headers: {'X-Key': KEY}}); STATE = await api('/api/state'); render(); }catch(e){}
+  try{ await fetch('/api/upload?name=' + name + '&del=1', {method: 'POST', headers: {'X-Device': DEVICE,'X-Key': KEY}}); STATE = await api('/api/state'); render(); }catch(e){}
 }
 const hasFile = n => (STATE.files || {})[n] && STATE.files[n].size > 0;
 // a photo for a family occasion: made smaller on the phone first (720 px, JPEG)
@@ -690,7 +704,8 @@ async function setQuran(on){
 function sendMessage(){
   const text = $('msg-text').value.trim(); if(!text) return toast('اكتب الرسالة', true);
   const mins = +$('msg-dur').value;
-  save('message', {text, style: $('msg-style').value, until: mins ? Date.now() + mins*60000 : 0, at: Date.now()});
+  if(!Number.isInteger(mins)||mins<1||mins>1440)return toast('أدخل مدة من دقيقة إلى 1440 دقيقة',true);
+  save('message', {text, sender:$('msg-sender').value.trim() || 'النظام', style: $('msg-style').value, until: Date.now() + mins*60000, at: Date.now()});
 }
 function clearMessage(){ save('message', {text: '', until: 0, at: Date.now()}); }
 function addTask(){
@@ -730,7 +745,7 @@ function addFamily(){
 function saveSleep(){ save('sleep', {from: $('sleep-from').value || '00:00', to: $('sleep-to').value || '', off: $('sleep-off').checked}); }
 function saveDisplay(){
   const cards = {}; document.querySelectorAll('[data-card]').forEach(x => cards[x.dataset.card] = x.checked);
-  save('display', {cards, cardSec: +$('card-sec').value, photoMin: +$('photo-min').value, quranSize: $('q-size').value, quranPos: $('q-pos').value,
+  save('display', {...(STATE.display||{}), salaryDate:$('salary-date').value, salaryHolidays:['fitr','adha'].map(k=>({from:$('salary-'+k+'-from').value,to:$('salary-'+k+'-to').value})), cards, cardSec: +$('card-sec').value, photoMin: +$('photo-min').value, quranSize: $('q-size').value, quranPos: $('q-pos').value,
     adhanMode: $('adhan-mode').value, adhanFajrMode: $('adhan-fajr-mode').value, autoQuran: $('auto-quran').checked, matchSound: $('match-sound').checked,
     whistle: $('whistle').value, taskSound: $('task-sound').checked, startOnPower: $('start-power').checked});
 }
@@ -773,7 +788,7 @@ function addTeam(x){
   $('team-results').innerHTML = ''; $('team-q').value = '';
 }
 
-if(KEY) start().catch(() => {});
+if(KEY) start().catch(() => { $('pinbox').hidden=true;$('app').hidden=false;toast('تعذر الاتصال بالشاشة المختارة. اختر الشاشة الأخرى من الأعلى.',true); });
 </script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-package sa.urtv.screensaver;
+package sa.yourtv.v2.screensaver;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -12,12 +12,12 @@ import java.util.List;
  * The screensaver's settings from ADB, for agents (people use SettingsActivity). Only the shell can send
  * these: the manifest requires android.permission.DUMP. optimize/saver.sh wraps them.
  *
- *   am broadcast -n sa.urtv.screensaver/.SaverReceiver -a sa.urtv.screensaver.GET
- *   am broadcast -n sa.urtv.screensaver/.SaverReceiver -a sa.urtv.screensaver.CITIES
- *   am broadcast -n sa.urtv.screensaver/.SaverReceiver -a sa.urtv.screensaver.SET
+ *   am broadcast -n sa.yourtv.v2.screensaver/.SaverReceiver -a sa.yourtv.v2.screensaver.GET
+ *   am broadcast -n sa.yourtv.v2.screensaver/.SaverReceiver -a sa.yourtv.v2.screensaver.CITIES
+ *   am broadcast -n sa.yourtv.v2.screensaver/.SaverReceiver -a sa.yourtv.v2.screensaver.SET
  *       [--es city 'الرس'] [--es lat 25.86 --es lon 43.49] [--es teams '136013:Al-Hilal,150643:Al-Zulfi']
  *       [--es panel prayers] [--es home_panel none] [--es minrating 7] [--es genres Drama,Comedy] [--es langs English]
- *   am broadcast -n sa.urtv.screensaver/.SaverReceiver -a sa.urtv.screensaver.UPDATE
+ *   am broadcast -n sa.yourtv.v2.screensaver/.SaverReceiver -a sa.yourtv.v2.screensaver.UPDATE
  *
  * The answer is in the "data" of am's output. Unknown values are refused with a message, nothing half-saved.
  */
@@ -27,10 +27,22 @@ public class SaverReceiver extends BroadcastReceiver {
         Prefs p = new Prefs(c);
         String action = String.valueOf(i.getAction());
         switch (action) {
-            case "sa.urtv.screensaver.GET":
+            case "sa.yourtv.v2.screensaver.HUB": {
+                try {
+                    org.json.JSONArray devices = new org.json.JSONArray(i.getStringExtra("devices"));
+                    for(int n=0;n<devices.length();n++) {
+                        org.json.JSONObject d=devices.getJSONObject(n);
+                        if(!d.getString("id").matches("[a-z0-9_-]{1,20}") || !d.getString("host").matches("192\\.168\\.[0-9]{1,3}\\.[0-9]{1,3}") || !d.getString("pin").matches("[0-9]{6}")) throw new Exception();
+                    }
+                    ControlStore.prefs(c).edit().putString("controlDevices",devices.toString()).apply();
+                    setResultData("hub configured");
+                } catch(Exception e) { setResultData("invalid devices"); }
+                return;
+            }
+            case "sa.yourtv.v2.screensaver.GET":
                 setResultData(describe(p));
                 return;
-            case "sa.urtv.screensaver.CITIES": {
+            case "sa.yourtv.v2.screensaver.CITIES": {
                 StringBuilder b = new StringBuilder();
                 for (Cities.Region r : Cities.REGIONS) {
                     b.append(r.name).append(": ");
@@ -41,7 +53,7 @@ public class SaverReceiver extends BroadcastReceiver {
                 setResultData(b.toString().trim());
                 return;
             }
-            case "sa.urtv.screensaver.UPDATE": {
+            case "sa.yourtv.v2.screensaver.UPDATE": {
                 final PendingResult pending = goAsync();   // a download: off the main thread
                 final Context app = c.getApplicationContext();
                 new Thread(() -> {
@@ -50,7 +62,7 @@ public class SaverReceiver extends BroadcastReceiver {
                 }).start();
                 return;
             }
-            case "sa.urtv.screensaver.SYNC": {   // --es key <32+ characters> --es peers <the other TVs' addresses, comma separated>
+            case "sa.yourtv.v2.screensaver.SYNC": {   // --es key <32+ characters> --es peers <the other TVs' addresses, comma separated>
                 String k = i.getStringExtra("key"), peers = i.getStringExtra("peers");
                 if (k == null || !k.matches("[A-Za-z0-9]{32,128}") || peers == null || !peers.matches("[0-9.,]{7,200}")) {
                     setResultData("error: --es key (32+ letters and digits) and --es peers (addresses, comma separated)");
@@ -60,7 +72,7 @@ public class SaverReceiver extends BroadcastReceiver {
                 setResultData("sync: " + peers);
                 return;
             }
-            case "sa.urtv.screensaver.TEST": {   // --es what whistle|chime|soft|kickoff|hour|adhan|weather|friday|series|overlay
+            case "sa.yourtv.v2.screensaver.TEST": {   // --es what whistle|chime|soft|kickoff|hour|adhan|weather|friday|series|overlay
                 String what = String.valueOf(i.getStringExtra("what"));
                 if (!what.matches("[a-z]{3,12}")) { setResultData("error: --es what"); return; }
                 if ("overlay".equals(what)) new WeatherWatch(c).test();   // the notice over other apps
@@ -71,7 +83,7 @@ public class SaverReceiver extends BroadcastReceiver {
                 setResultData("test: " + what);
                 return;
             }
-            case "sa.urtv.screensaver.SET":
+            case "sa.yourtv.v2.screensaver.SET":
                 setResultData(set(c, p, i));
                 return;
             default:

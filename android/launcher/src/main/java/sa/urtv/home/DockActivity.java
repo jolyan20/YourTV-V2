@@ -1,4 +1,4 @@
-package sa.urtv.home;
+package sa.yourtv.v2.home;
 
 import android.app.Activity;
 import android.graphics.Typeface;
@@ -25,7 +25,7 @@ import java.util.Map;
  * «ترتيب المفضلة»: the favourites row as a list, arranged with the remote. OK on an app picks it up, ▲▼ move
  * it, OK drops it. «إزالة» beside each one, every other app below to add. No dialogs: the launcher is laid
  * out left to right, so rows are built right-aligned by hand. Opened from the long-press menu, from the
- * screensaver's settings, or `am start -n sa.urtv.home/.DockActivity`.
+ * screensaver's settings, or `am start -n sa.yourtv.v2.home/.DockActivity`.
  */
 public class DockActivity extends Activity {
     private static final int GOLD = 0xFFD6AF6B, INK = 0xFF04120C, TEXT = 0xFFF6EFE0, DIM = 0xFFC6BBA4;

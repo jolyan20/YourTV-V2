@@ -1,4 +1,4 @@
-package sa.urtv.screensaver;
+package sa.yourtv.v2.screensaver;
 
 import android.content.Context;
 
@@ -64,6 +64,7 @@ final class ControlSync {
                 JSONObject files = o.optJSONObject("files"), mine = Uploads.list(c);
                 if (files != null) for (java.util.Iterator<String> it = files.keys(); it.hasNext(); ) {
                     String name = it.next();
+                    if (name.startsWith("adhan-video-")) continue;
                     JSONObject f = files.optJSONObject(name), m = mine.optJSONObject(name);
                     if (f == null || !Uploads.okName(name) || f.optLong("at") <= (m == null ? 0 : m.optLong("at"))) continue;
                     if (f.optLong("size") < 0) Uploads.delete(c, name, f.optLong("at"));

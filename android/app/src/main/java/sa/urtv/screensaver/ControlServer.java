@@ -1,4 +1,4 @@
-package sa.urtv.screensaver;
+package sa.yourtv.v2.screensaver;
 
 import android.content.Context;
 
@@ -17,7 +17,7 @@ import java.util.Map;
 import java.util.concurrent.Semaphore;
 
 /**
- * A tiny web server for the phone page (port 8765), reachable from the home network and from Tailscale only:
+ * A tiny web server for the phone page (port 8766), reachable from the home network and from Tailscale only:
  *   GET  /               the page (assets/control.html)
  *   GET  /api/public     the screensaver page's view of the settings, from this TV itself (127.0.0.1)
  *   POST /api/login      {"pin": "123456"} -> {"key": session key}
@@ -75,6 +75,31 @@ final class ControlServer implements Runnable {
         }
     }
 
+    /** Stream media in bounded chunks; WebView requests byte ranges while probing MP4 files. */
+    private static void replyFile(Socket socket, String type, java.io.File file, String range) throws Exception {
+        try (java.io.RandomAccessFile input = new java.io.RandomAccessFile(file, "r")) {
+            long total = input.length(), start = 0, end = total - 1;
+            boolean partial = !range.isEmpty();
+            if (partial) {
+                try {
+                    if (!range.matches("bytes=[0-9]*-[0-9]*")) throw new Exception();
+                    String[] pair = range.substring(6).split("-", -1);
+                    if (pair[0].isEmpty()) { long suffix=Long.parseLong(pair[1]); if(suffix<=0)throw new Exception(); start=Math.max(0,total-suffix); }
+                    else { start=Long.parseLong(pair[0]); if(!pair[1].isEmpty())end=Math.min(end,Long.parseLong(pair[1])); }
+                    if(start>=total || end<start)throw new Exception();
+                } catch(Exception invalid) {
+                    socket.getOutputStream().write(("HTTP/1.1 416 Range Not Satisfiable\r\nContent-Range: bytes */"+total+"\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.US_ASCII)); return;
+                }
+            }
+            long count=end-start+1;
+            String header="HTTP/1.1 "+(partial?"206 Partial Content":"200 OK")+"\r\nContent-Type: "+type+"\r\nAccept-Ranges: bytes\r\nContent-Length: "+count+"\r\nAccess-Control-Allow-Origin: *\r\nCache-Control: no-store\r\nConnection: close\r\n"+(partial?"Content-Range: bytes "+start+"-"+end+"/"+total+"\r\n":"")+"\r\n";
+            OutputStream out=socket.getOutputStream();out.write(header.getBytes(StandardCharsets.US_ASCII));input.seek(start);
+            byte[] buffer=new byte[65536];
+            while(count>0){int n=input.read(buffer,0,(int)Math.min(count,buffer.length));if(n<0)break;out.write(buffer,0,n);count-=n;}
+            out.flush();
+        }
+    }
+
     private void handle(Socket s) {
         try {
             s.setSoTimeout(10000);
@@ -94,10 +119,16 @@ final class ControlServer implements Runnable {
             int len = 0;
             try { len = Integer.parseInt(get(h, "content-length", "0")); } catch (Exception ignored) { }
             boolean upload = path.startsWith("/api/upload");
-            if (len < 0 || len > (upload ? Uploads.MAX : 200_000)) { reply(s, 413, "text/plain", "too large", false); return; }
+            if (len < 0 || len > (upload ? Uploads.VIDEO_MAX : 200_000)) { reply(s, 413, "text/plain", "too large", false); return; }
             if (upload) s.setSoTimeout(90_000);   // a few megabytes from the phone, maybe over Tailscale
-            byte[] body = new byte[len];
-            for (int got = 0; got < len; ) { int n = in.read(body, got, len - got); if (n < 0) break; got += n; }
+            String device=get(h,"x-device","");
+            if(!device.isEmpty() && !device.equals("local")) {
+                if(!ControlStore.sessionValid(app,get(h,"x-key",""))) {reply(s,401,"application/json","{}",false);return;}
+                if(!path.matches("/api/(state|prefs|teams|shows|save|upload|quran)(\\?.*)?")) {reply(s,403,"application/json","{}",false);return;}
+                relayDevice(s,in,method,path,h,len,device); return;
+            }
+            byte[] body = new byte[upload ? 0 : len];
+            for (int got = 0; got < body.length; ) { int n = in.read(body, got, body.length - got); if (n < 0) throw new java.io.EOFException(); got += n; }
             String query = path.contains("?") ? path.substring(path.indexOf('?') + 1) : "";
             if (path.contains("?")) path = path.substring(0, path.indexOf('?'));
 
@@ -149,9 +180,9 @@ final class ControlServer implements Runnable {
 
             if ("GET".equals(method) && path.startsWith("/file/")) {   // the screensaver page on this TV: the adhan, a photo
                 String name = path.substring(6);
-                byte[] f = from.isLoopbackAddress() && Uploads.okName(name) ? Uploads.read(app, name) : null;
-                if (f == null) { reply(s, 404, "text/plain", "none", false); return; }
-                replyBytes(s, Uploads.type(app, name), f); return;
+                java.io.File f = from.isLoopbackAddress() && Uploads.okName(name) ? Uploads.file(app, name) : null;
+                if (f == null || !f.isFile()) { reply(s, 404, "text/plain", "none", false); return; }
+                replyFile(s, Uploads.type(app, name), f, get(h, "range", "")); return;
             }
             if ("GET".equals(method) && "/api/syncfile".equals(path)) {   // the sister TV takes a file (ControlSync)
                 if (!ControlSync.keyMatches(app, get(h, "x-sync", ""))) { failed(who); reply(s, 401, "text/plain", "sync", false); return; }
@@ -166,6 +197,12 @@ final class ControlServer implements Runnable {
             }
             String key = get(h, "x-key", "");
             if (!ControlStore.sessionValid(app, key)) { reply(s, 401, "application/json", "{\"error\":\"session\"}", false); return; }
+            if("GET".equals(method) && "/api/devices".equals(path)) {
+                JSONArray list=new JSONArray(), devices=new JSONArray(ControlStore.prefs(app).getString("controlDevices","[]"));
+                list.put(new JSONObject().put("id","local").put("name","TCL"));
+                for(int n=0;n<devices.length();n++){JSONObject d=devices.getJSONObject(n);list.put(new JSONObject().put("id",d.getString("id")).put("name",d.optString("name",d.getString("id"))));}
+                reply(s,200,"application/json",list.toString(),false);return;
+            }
             if ("GET".equals(method) && "/api/prefs".equals(path)) {
                 reply(s, 200, "application/json; charset=utf-8", ControlPrefs.read(app).toString(), false); return;
             }
@@ -180,13 +217,14 @@ final class ControlServer implements Runnable {
                     if (kv.startsWith("del=")) del = kv.substring(4);
                 }
                 String type = get(h, "content-type", "").split(";")[0].trim().toLowerCase();
-                boolean audio = name.startsWith("adhan-");
+                boolean video = name.startsWith("adhan-video-");
+                boolean audio = name.startsWith("adhan-") && !video;
                 if (!Uploads.okName(name)) { reply(s, 400, "application/json", "{\"error\":\"name\"}", false); return; }
                 if ("1".equals(del)) { Uploads.delete(app, name, System.currentTimeMillis()); reply(s, 200, "application/json", "{\"ok\":true}", false); return; }
-                if (body.length < 1000 || !(audio ? type.startsWith("audio/") : type.matches("image/(jpeg|png|webp)"))) {
+                if (len < 1000 || len > (video ? Uploads.VIDEO_MAX : Uploads.MAX) || !(video ? type.equals("video/mp4") : audio ? type.startsWith("audio/") : type.matches("image/(jpeg|png|webp)"))) {
                     reply(s, 400, "application/json", "{\"error\":\"type\"}", false); return;
                 }
-                Uploads.save(app, name, body, System.currentTimeMillis(), type);
+                Uploads.saveStream(app, name, in, len, System.currentTimeMillis(), type);
                 reply(s, 200, "application/json", "{\"ok\":true}", false); return;
             }
             if ("GET".equals(method) && "/api/shows".equals(path)) {
@@ -223,6 +261,36 @@ final class ControlServer implements Runnable {
         } catch (Exception e) {
             try { reply(s, 400, "text/plain", "bad request", false); } catch (Exception ignored) { }
         }
+    }
+
+    private final Map<String,String> deviceSessions=new java.util.concurrent.ConcurrentHashMap<>();
+    private void relayDevice(Socket client,InputStream body,String method,String path,Map<String,String> headers,int length,String id) throws Exception {
+        JSONObject device=null;JSONArray devices=new JSONArray(ControlStore.prefs(app).getString("controlDevices","[]"));
+        for(int i=0;i<devices.length();i++)if(id.equals(devices.getJSONObject(i).getString("id")))device=devices.getJSONObject(i);
+        if(device==null){reply(client,404,"application/json","{}",false);return;}
+        String host=device.getString("host");
+        try {
+            String token=deviceSessions.get(id);
+            if(token==null){
+                try(Socket remote=new Socket()){
+                    remote.connect(new java.net.InetSocketAddress(host,ControlStore.PORT),4000);remote.setSoTimeout(10000);
+                    byte[] data=new JSONObject().put("pin",device.getString("pin")).toString().getBytes(StandardCharsets.UTF_8);
+                    OutputStream out=remote.getOutputStream();out.write(("POST /api/login HTTP/1.1\r\nHost: "+host+"\r\nContent-Type: application/json\r\nContent-Length: "+data.length+"\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));out.write(data);out.flush();
+                    InputStream input=remote.getInputStream();String head=readHead(input);if(head==null||!head.startsWith("HTTP/1.1 200"))throw new java.io.IOException("login");
+                    ByteArrayOutputStream result=new ByteArrayOutputStream();byte[] buf=new byte[4096];int n;while((n=input.read(buf))!=-1){result.write(buf,0,n);if(result.size()>16384)throw new java.io.IOException("response");}
+                    token=new JSONObject(result.toString("UTF-8")).getString("key");deviceSessions.put(id,token);
+                }
+            }
+            try(Socket remote=new Socket()){
+                remote.connect(new java.net.InetSocketAddress(host,ControlStore.PORT),4000);remote.setSoTimeout(90000);client.setSoTimeout(90000);
+                OutputStream out=remote.getOutputStream();String type=get(headers,"content-type","application/json");if(!type.matches("[A-Za-z0-9/;= ._-]+"))type="application/octet-stream";
+                out.write((method+" "+path+" HTTP/1.1\r\nHost: "+host+"\r\nX-Key: "+token+"\r\nContent-Type: "+type+"\r\nContent-Length: "+length+"\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+                byte[] buf=new byte[65536];int left=length;while(left>0){int n=body.read(buf,0,Math.min(left,buf.length));if(n<0)throw new java.io.EOFException();out.write(buf,0,n);left-=n;}out.flush();
+                InputStream input=remote.getInputStream();String head=readHead(input);if(head==null)throw new java.io.IOException("response");
+                if(head.startsWith("HTTP/1.1 401")){deviceSessions.remove(id);reply(client,502,"application/json","{\"error\":\"device_session_retry\"}",false);return;}
+                OutputStream target=client.getOutputStream();target.write(head.getBytes(StandardCharsets.UTF_8));int n;while((n=input.read(buf))!=-1)target.write(buf,0,n);target.flush();
+            }
+        }catch(Exception e){reply(client,503,"application/json","{\"error\":\"device_unavailable\"}",false);}
     }
 
     /** ms until this address may try again (0 = now) */

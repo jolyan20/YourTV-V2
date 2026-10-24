@@ -1,4 +1,4 @@
-package sa.urtv.screensaver;
+package sa.yourtv.v2.screensaver;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -48,6 +48,7 @@ final class Updater {
             // never swap in a truncated or wrong file
             if (body.length < 30_000 || !head.contains("<html") || !tail.contains("</html>")) return "ملف التحديث غير صالح";
 
+            if (!head.contains("yourtv-generation")) return "بانتظار نشر تحديث YourTV V2";
             File dir = out.getParentFile();
             if (!dir.isDirectory() && !dir.mkdirs()) return "تعذر الحفظ";
             File tmp = new File(dir, "page.tmp");

@@ -1,4 +1,4 @@
-package sa.urtv.screensaver;
+package sa.yourtv.v2.screensaver;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -23,7 +23,7 @@ import java.util.Iterator;
  * from the TV's settings makes a new one and cancels every session key.
  */
 final class ControlStore {
-    static final int PORT = 8765;
+    static final int PORT = 8766;
     static final String[] SECTIONS = {"message", "tasks", "reminders", "family", "sleep", "display", "series", "bedtime", "game", "wird", "screens", "guest", "alarm", "tmdb"};
     static final String KEY_QURAN = "quran";
     private static final String FILE = "control";

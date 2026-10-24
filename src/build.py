@@ -19,7 +19,7 @@ FONTS = {
     "__F_DISPLAY__": "ThmanyahDisplay-Bold.woff2",
 }
 # tv.html points here for fonts and bundled photos; the app answers from its assets, a browser from GitHub.
-REPO = "https://raw.githubusercontent.com/jolyan20/YourTV/master/"
+REPO = "https://raw.githubusercontent.com/jolyan20/YourTV-V2/master/"
 
 
 BASMALA = "بسم الله الرحمن الرحيم"   # compared without harakat: the API orders them its own way

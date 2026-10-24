@@ -1,4 +1,4 @@
-package sa.urtv.screensaver;
+package sa.yourtv.v2.screensaver;
 
 import android.content.Context;
 import android.webkit.WebResourceResponse;
@@ -17,7 +17,7 @@ import java.util.Comparator;
  * opens at once. Fonts and bundled photos come from the APK; hosted photos are downloaded once and kept.
  */
 final class PhotoCache {
-    static final String REPO = "https://raw.githubusercontent.com/jolyan20/YourTV/master/";
+    static final String REPO = "https://raw.githubusercontent.com/jolyan20/YourTV-V2/master/";
     private static final String BUNDLED = REPO + "assets/backgrounds/", HOSTED = REPO + "photos/",
         FONTS = REPO + "assets/fonts/", LOGOS = REPO + "assets/logos/";
     private static final int KEEP = 12;   // the 5-photo set plus room for the next one

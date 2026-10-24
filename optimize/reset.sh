@@ -32,7 +32,7 @@ printf '%s\n' "settings delete secure screensaver_components" "settings delete s
   | tv --batch > /dev/null
 
 echo "3/4 Removing our apps (old and new names; missing ones are skipped)…"
-for p in sa.urtv.home sa.urtv.screensaver sa.yourtv.home sa.yourtv.screensaver com.abdullah.tvhome com.abdullah.tvsaver; do
+for p in sa.yourtv.v2.home sa.yourtv.v2.screensaver sa.yourtv.home sa.yourtv.screensaver com.abdullah.tvhome com.abdullah.tvsaver; do
   tv "pm uninstall $p" | grep -q Success && echo "   removed $p" || true
 done
 # TV Bro and SmartTube: only if the setup put them there (not in the TV's package list saved before it)

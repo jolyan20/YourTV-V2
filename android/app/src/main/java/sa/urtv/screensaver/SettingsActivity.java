@@ -1,4 +1,4 @@
-package sa.urtv.screensaver;
+package sa.yourtv.v2.screensaver;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -330,7 +330,7 @@ public class SettingsActivity extends Activity {
     /** «ترتيب المفضلة» lives in the launcher (it owns the row). */
     private void openDockSettings() {
         try {
-            startActivity(new Intent().setClassName("sa.urtv.home", "sa.urtv.home.DockActivity"));
+            startActivity(new Intent().setClassName("sa.yourtv.v2.home", "sa.yourtv.v2.home.DockActivity"));
         } catch (RuntimeException e) {
             toast("ثبّت الواجهة الرئيسية «تلفزيونك» أولاً");
         }

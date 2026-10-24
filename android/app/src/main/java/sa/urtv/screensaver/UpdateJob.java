@@ -1,4 +1,4 @@
-package sa.urtv.screensaver;
+package sa.yourtv.v2.screensaver;
 
 import android.app.job.JobInfo;
 import android.app.job.JobParameters;

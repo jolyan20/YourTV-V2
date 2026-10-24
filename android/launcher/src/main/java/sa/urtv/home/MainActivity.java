@@ -1,4 +1,4 @@
-package sa.urtv.home;
+package sa.yourtv.v2.home;
 
 import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
@@ -243,17 +243,20 @@ public class MainActivity extends Activity {
         int screenH = getResources().getDisplayMetrics().heightPixels;
         content.addView(hero, new LinearLayout.LayoutParams(-1, screenH));
 
-        hero.addView(buildHeader(), lp(-1, -2, Gravity.TOP, dp(48), dp(36), dp(48), 0));
+        View nativeHeader = buildHeader();
+        hero.addView(nativeHeader, lp(-1, -2, Gravity.TOP, dp(48), dp(12), dp(48), 0));
         // optional card under the pills, same size as beside the screensaver's clock
-        homeCard = new HomeCard(this, hero, lp(dp(461), dp(250), Gravity.LEFT | Gravity.TOP, dp(48), dp(84), 0, 0));
+        homeCard = new HomeCard(this, hero, lp(-1, -1, Gravity.TOP, 0, 0, 0, 0));
+        nativeHeader.bringToFront();
 
         LinearLayout bottom = new LinearLayout(this);
         bottom.setOrientation(LinearLayout.VERTICAL);
         bottom.setClipChildren(false);
         bottom.setClipToPadding(false);
-        hero.addView(bottom, lp(-1, -2, Gravity.BOTTOM, dp(48), 0, dp(48), dp(30)));
+        hero.addView(bottom, lp(-1, -2, Gravity.BOTTOM, dp(48), 0, dp(48), dp(12)));
 
         title = text(34, "sans-serif-light", Color.WHITE);
+        title.setVisibility(View.GONE);
         title.setShadowLayer(dp(18), 0, 0, 0x66000000);
         title.setSingleLine(true);
         bottom.addView(title, new LinearLayout.LayoutParams(-2, -2));
@@ -264,7 +267,7 @@ public class MainActivity extends Activity {
         dockRow.setGravity(Gravity.CENTER);
         dockRow.setClipChildren(false);
         dockRow.setClipToPadding(false);
-        dockRow.setPadding(dp(20), dp(22), dp(20), dp(22));
+        dockRow.setPadding(dp(12), dp(5), dp(12), dp(5));
         GradientDrawable band = new GradientDrawable();
         band.setCornerRadius(dp(26));
         band.setColor(0x1FFFFFFF);
@@ -312,7 +315,7 @@ public class MainActivity extends Activity {
         for (TextView t : new TextView[]{greeting, clock, ampm, date}) t.setShadowLayer(dp(3), 0, dp(1), 0x80000000);
         left.setGravity(Gravity.RIGHT);
         for (TextView t : new TextView[]{greeting, date}) t.setGravity(Gravity.RIGHT);
-        header.addView(left, new FrameLayout.LayoutParams(-2, -2, Gravity.RIGHT | Gravity.TOP));
+        left.setVisibility(View.GONE);
 
         LinearLayout right = new LinearLayout(this);
         right.setGravity(Gravity.CENTER_VERTICAL);
@@ -401,8 +404,8 @@ public class MainActivity extends Activity {
 
         for (int i = 0; i < dock.size(); i++) {
             View tile = tile(dock.get(i), true);
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -2, 1f);
-            p.setMargins(i == 0 ? 0 : dp(10), 0, i == dock.size() - 1 ? 0 : dp(10), 0);
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(dp(Math.min(56, (getResources().getDisplayMetrics().widthPixels / getResources().getDisplayMetrics().density - 136 - 8 * (dock.size() - 1)) / dock.size())), -2);
+            p.setMargins(i == 0 ? 0 : dp(4), 0, i == dock.size() - 1 ? 0 : dp(4), 0);
             dockRow.addView(tile, p);
         }
 
@@ -812,7 +815,7 @@ public class MainActivity extends Activity {
 
     // Hosted photos (photos/index.json in the repo) join the bundled ones. Each is downloaded once into
     // files/photos and reused; offline or on any failure the next bundled photo is shown instead.
-    static final String PHOTO_BASE = "https://raw.githubusercontent.com/jolyan20/YourTV/master/photos/";
+    static final String PHOTO_BASE = "https://raw.githubusercontent.com/jolyan20/YourTV-V2/master/photos/";
     static final long INDEX_MAX_AGE_MS = 24 * 3600 * 1000L;
 
     static final int PHOTO_SET = 5, PHOTO_PERIOD_DAYS = 4;
@@ -1025,7 +1028,7 @@ public class MainActivity extends Activity {
     }
 
     static final int GOLD = 0xFFD6AF6B;
-    static final String SAVER_PKG = "sa.urtv.screensaver";
+    static final String SAVER_PKG = "sa.yourtv.v2.screensaver";
     private final Map<String, Typeface> fonts = new HashMap<>();
 
     /** Thmanyah from assets/fonts; any old family name maps to the nearest weight. */
@@ -1074,8 +1077,28 @@ public class MainActivity extends Activity {
         return Color.rgb((int) (Color.red(c) * f), (int) (Color.green(c) * f), (int) (Color.blue(c) * f));
     }
 
+    private boolean cardNavigation = false;
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
+        int key = e.getKeyCode();
+        if (cardNavigation && homeCard != null) {
+            if (key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                if (e.getAction() == KeyEvent.ACTION_UP) homeCard.navigate(key == KeyEvent.KEYCODE_DPAD_LEFT ? 1 : -1);
+                return true;
+            }
+            if (key == KeyEvent.KEYCODE_DPAD_DOWN || key == KeyEvent.KEYCODE_BACK || key == KeyEvent.KEYCODE_DPAD_UP) {
+                if (e.getAction() == KeyEvent.ACTION_UP) {
+                    cardNavigation = false; homeCard.focusCards(false);
+                    if (key == KeyEvent.KEYCODE_DPAD_UP && !pills.isEmpty()) pills.get(0).requestFocus();
+                }
+                return true;
+            }
+            if (key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER) return true;
+        }
+        if (key == KeyEvent.KEYCODE_DPAD_UP && dockCards.contains(getCurrentFocus()) && homeCard != null) {
+            if (e.getAction() == KeyEvent.ACTION_UP) { cardNavigation = true; homeCard.focusCards(true); }
+            return true;
+        }
         // Menu key on the remote opens the Inputs dropdown.
         if (e.getKeyCode() == KeyEvent.KEYCODE_MENU && e.getAction() == KeyEvent.ACTION_UP && !pills.isEmpty()) {
             showInputs(pills.get(0));
