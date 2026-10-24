@@ -35,7 +35,7 @@ def tracked(*globs):
 before = {n: (ROOT / "dist" / n).read_bytes() for n in ("urtv.html", "tv.html") if (ROOT / "dist" / n).is_file()}
 r = subprocess.run([sys.executable, "src/build.py"], cwd=ROOT, capture_output=True, text=True)
 check("src/build.py runs", r.returncode == 0, r.stderr[-400:])
-for page, limit in (("urtv.html", 4_000_000), ("tv.html", 450_000)):   # YourTV: adhkar, مختارات, alerts, fixtures
+for page, limit in (("urtv.html", 4_000_000), ("tv.html", 600_000)):   # V2 includes bundled club artwork and unified dashboard; keep a bounded 600 KB page budget
     html = (ROOT / "dist" / page).read_text(encoding="utf-8")
     left = sorted(set(re.findall(r"__[A-Z][A-Z_]+__", html)))
     check(f"{page}: every build token replaced", not left, left)
