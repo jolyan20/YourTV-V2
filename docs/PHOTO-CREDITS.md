@@ -13,7 +13,8 @@ Changed: the face straightened to a square, the photographed hands removed by co
 evened out; `makkah-night.jpg` recolours it as the tower is lit at night. Since 4.15 the dial inside the gold rim
 is drawn again over its own colour, at 1200 px: the twelve hour marks (pairs of bars measured from the photographs,
 the same all round the dial's fitted centre), the thin gold circle, and the palm and swords of the Kingdom's emblem
-in the photographs' places; the rim and the frame are the photographs'. Both images are shared under the same
+in the photographs' places; the rim and the frame are the photographs'. Since 4.16 the emblem, the hands and the
+dial's day and night colours are redrawn to match photographs of the tower's face. Both images are shared under the same
 licence, CC BY-SA 4.0.
 
 ## Bundled with the apps (offline fallback)

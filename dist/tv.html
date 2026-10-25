@@ -1058,19 +1058,23 @@ function tickClock(){
 // the numerals and hands white, the emblem and the filigree gold. The light follows the sun (watchLight).
 const WATCH_BOX = '0 0 1200 1200';
 function watchSVG(){
-  // the tower's hands: long black blades, gold-trimmed, a gold ornament at the tip and on the tail past the centre
-  const hand = (id, len, tail, w, tip) => `<g id="${id}">
-<g class="hd"><path d="M${-w*.42} ${tail}L${-w*.5} ${-len + tip}L${-w*.5} ${-len}L${w*.5} ${-len}L${w*.5} ${-len + tip}L${w*.42} ${tail}Z" fill="#14161B" stroke="#C9A04A" stroke-width="3"/>
-<path d="M${-w*.32} ${-len + 8}L${w*.32} ${-len + 8}L${w*.32} ${-len + tip - 6}L0 ${-len + tip + 18}L${-w*.32} ${-len + tip - 6}Z" fill="url(#hGold)"/>
-<path d="M${-w*.3} ${tail - 8}L${w*.3} ${tail - 8}L${w*.26} ${tail - 52}L0 ${tail - 68}L${-w*.26} ${tail - 52}Z" fill="url(#hGold)"/></g>
-<g class="hn"><path d="M${-w*.42} ${tail}L${-w*.5} ${-len + tip}L${-w*.5} ${-len}L${w*.5} ${-len}L${w*.5} ${-len + tip}L${w*.42} ${tail}Z" fill="#F4FFF2" stroke="#FFFFFF" stroke-width="3"/></g></g>`;
+  // the tower's hands as in its photos: flat blades of even width with rounded ends, dark bronze edged in gold, gold
+  // studs near the tip, at the centre and on the tail; at night lit white
+  const hand = (id, len, tail, w) => {
+    const r = w / 2, bar = `M${-r} ${tail - r}L${-r} ${-len + r}A${r} ${r} 0 0 1 ${r} ${-len + r}L${r} ${tail - r}A${r} ${r} 0 0 1 ${-r} ${tail - r}Z`;
+    const studs = (fill, edge) => [-len + w * .9, -len * .42, tail - w * .75].map(y => `<circle cy="${y}" r="${(w * .17).toFixed(1)}" fill="${fill}" stroke="${edge}" stroke-width="2"/>`).join('');
+    return `<g id="${id}">
+<g class="hd"><path d="${bar}" fill="url(#hBronze)" stroke="#B8913E" stroke-width="3.5"/><path d="M0 ${tail - w}L0 ${-len + w}" stroke="#5A5040" stroke-width="2" opacity=".6"/>${studs('url(#hGold)', '#6E5220')}</g>
+<g class="hn"><path d="${bar}" fill="#F6FFF6" stroke="#FFFFFF" stroke-width="3"/>${studs('#C9D6CC', '#9FB2A6')}</g></g>`;
+  };
   return `<svg class="watch-hands" viewBox="${WATCH_BOX}" aria-hidden="true"><defs>
+<linearGradient id="hBronze" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#1A1813"/><stop offset=".5" stop-color="#3A3428"/><stop offset="1" stop-color="#15130F"/></linearGradient>
 <linearGradient id="hGold" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9A7428"/><stop offset=".45" stop-color="#FCE7A6"/><stop offset=".6" stop-color="#E4BD62"/><stop offset="1" stop-color="#8A6420"/></linearGradient>
 <filter id="hShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="7" dy="10" stdDeviation="6" flood-opacity=".45"/></filter>
 <filter id="hGlow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
 <g transform="translate(597.2 620.6)" filter="url(#hShadow)">
-${hand('v2-hour', 300, 95, 52, 92)}
-${hand('v2-minute', 452, 135, 40, 104)}
+${hand('v2-hour', 300, 150, 64)}
+${hand('v2-minute', 468, 150, 54)}
 <circle r="30" fill="url(#hGold)" stroke="#5E4416" stroke-width="3"/><circle r="10" fill="#14161B"/></g></svg>`;
 }
 // how lit the face is: 0 by day, 1 at night; the change runs from 40 minutes before Maghrib to 20 after, and from

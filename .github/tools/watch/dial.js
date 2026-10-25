@@ -10,7 +10,7 @@ module.exports = function dial(night){
     const a = rot * Math.PI / 180, x = side * u, y = -v;   // before turning: 12 o'clock
     return [(cx + x * Math.cos(a) - y * Math.sin(a)).toFixed(2), (cy + x * Math.sin(a) + y * Math.cos(a)).toFixed(2)].join(' ');
   }).join(' L');
-  const face = night ? '#F4FAF2' : '#1B2033', edge = night ? '#C9E9C6' : '#2C3350';
+  const face = night ? '#F4FAF2' : '#17181C', edge = night ? '#C9E9C6' : '#2A2B30';
   let marks = '';
   for(let h = 0; h < 12; h++) for(const side of [-1, 1]) marks += `<path d="M${pts(side, h * 30)}Z"/>`;
   return `<g id="dialparts">

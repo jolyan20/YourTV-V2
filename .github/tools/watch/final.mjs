@@ -1,21 +1,23 @@
-// Makes assets/watch/makkah-day.jpg and makkah-night.jpg (1200 px) from the face photographs: run in this folder
-//   python3 -I clean.py ../../../assets/watch/<day photo>.jpg day-clean3.jpg     the dial emptied to its own colour
-//   python3 -I cleann.py ../../../assets/watch/<night photo>.jpg night-clean.jpg
-//   node final.mjs                                                                the marks, circle and emblem drawn
-// (playwright and scipy needed; dial.js and emblem.js hold the drawn parts, in the photographs' 640 px space)
 import { createRequire } from 'node:module';
 const req = createRequire(import.meta.url);
 const pw = createRequire('/opt/node-tools/node_modules/')('playwright');
 const emblem = req('./emblem.js'), dial = req('./dial.js'), fs = req('fs');
+const out = process.argv[2] || '.';
 const b = await pw.chromium.launch();
-for (const [src, out, night] of [['day-clean3.jpg','makkah-day.jpg',false],['night-clean.jpg','makkah-night.jpg',true]]) {
+for (const [src, name, night] of [['day-clean3.jpg','makkah-day.jpg',false],['night-clean.jpg','makkah-night.jpg',true]]) {
   const face = 'data:image/jpeg;base64,' + fs.readFileSync(src).toString('base64');
   const p = await b.newPage({viewport:{width:640,height:640}, deviceScaleFactor:1.875});   // 1200 px
-  // the photo enlarged smoothly, the emblem drawn sharp over it; at night the emblem lit a little warmer
+  // the dial's colour as in the photos of the tower: by day a warm white, at night the lit emerald with the inner
+  // disc a deeper sea green; the edge feathered into the photo's rim
+  const [o1, o2, i1, i2] = night ? ['#16A57C', '#0A8C69', '#3C9079', '#2F7C68'] : ['#F3F0E7', '#E3DED0', '#F1EEE5', '#E9E5DA'];
+  const paint = `<defs><radialGradient id="dg" cx="318.5" cy="331" r="269" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${o1}"/><stop offset="1" stop-color="${o2}"/></radialGradient>
+<radialGradient id="ig" cx="318.5" cy="331" r="150" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${i1}"/><stop offset="1" stop-color="${i2}"/></radialGradient>
+<filter id="fe"><feGaussianBlur stdDeviation="1.2"/></filter></defs>
+<circle cx="318.5" cy="331" r="268.5" fill="url(#dg)" filter="url(#fe)"/><circle cx="318.5" cy="331" r="269" fill="none" stroke="#B88A2C" stroke-width="2.2"/><circle cx="318.5" cy="331" r="150" fill="url(#ig)"/>`;
   await p.setContent(`<body style="margin:0"><svg width="640" height="640" viewBox="0 0 640 640"><image href="${face}" width="640" height="640" style="image-rendering:auto"/>`
-    + dial(night) + `<g ${night ? 'filter="url(#lit)"' : ''}>${emblem()}</g><defs><filter id="lit"><feColorMatrix type="matrix" values="1.08 0 0 0 0  0 1.04 0 0 0  0 0 .9 0 0  0 0 0 1 0"/></filter></defs></svg></body>`);
+    + paint + dial(night) + emblem(night) + `</svg></body>`);
   await p.waitForTimeout(300);
-  await p.screenshot({path: out, type:'jpeg', quality: 90});
+  await p.screenshot({path: out + '/' + name, type:'jpeg', quality: 90});
   await p.close();
 }
 await b.close();
