@@ -15,7 +15,7 @@ for (const [src, name, night] of [['day-clean3.jpg','makkah-day.jpg',false],['ni
 <filter id="fe"><feGaussianBlur stdDeviation="1.2"/></filter></defs>
 <circle cx="318.5" cy="331" r="268.5" fill="url(#dg)" filter="url(#fe)"/><circle cx="318.5" cy="331" r="269" fill="none" stroke="#B88A2C" stroke-width="2.2"/><circle cx="318.5" cy="331" r="150" fill="url(#ig)"/>`;
   await p.setContent(`<body style="margin:0"><svg width="640" height="640" viewBox="0 0 640 640"><image href="${face}" width="640" height="640" style="image-rendering:auto"/>`
-    + paint + dial(night) + emblem(night) + `</svg></body>`);
+    + paint + dial(night) + `</svg></body>`);
   await p.waitForTimeout(300);
   await p.screenshot({path: out + '/' + name, type:'jpeg', quality: 90});
   await p.close();
