@@ -817,6 +817,14 @@ html:not(.widget) .v2-show .series-copy .release-date{grid-column:2;grid-row:4;f
 html:not(.widget) .v2-show .series-copy .release-date span{white-space:nowrap;max-width:100%}
 html:not(.widget) .v2-show .series-copy>b{font-size:1.05vw}
 .sp-new{top:.5vh;right:.4vw;left:auto}
+/* R15: as agreed: the poster large and clean on top, and under it the name, then «الجزء · الحلقة», then the days left */
+html:not(.widget) .v2-show{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) 3.4vh 2.9vh 3.4vh;row-gap:.2vh;column-gap:0;padding:0 .4vw}
+html:not(.widget) .v2-show .series-poster{grid-column:1;grid-row:1;height:100%;max-width:none;align-self:stretch;justify-self:center}
+html:not(.widget) .v2-show .series-copy>b{grid-column:1;grid-row:2;align-self:center;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  -webkit-line-clamp:unset;max-height:none;height:auto;line-height:3.4vh;font-size:1.1vw;text-align:center}
+html:not(.widget) .v2-show .sp-epl{grid-column:1;grid-row:3;font-size:.9vw}
+html:not(.widget) .v2-show .series-copy .release-left{grid-column:1;grid-row:4;height:auto;font-size:.95vw}
+html:not(.widget) .v2-show .series-copy .release-date{display:none}
 /* the dua after the adhan: over the card, for a minute */
 .dua{position:absolute;inset:0;z-index:9;display:none;flex-direction:column;align-items:center;justify-content:center;gap:2.2vh;padding:3vh 3vw;
   border-radius:12px;background:linear-gradient(180deg,rgba(6,24,14,.97),rgba(4,16,10,.97));border:1px solid rgba(220,184,111,.65);text-align:center;direction:rtl}
@@ -2035,7 +2043,7 @@ function resultsFor(id){
 }
 
 // a team's crest (TheSportsDB, small size); a broken image just disappears
-const crest = url => url ? `<img class="crest" src="${esc(url)}/tiny" alt="" onerror="this.remove()">` : '';
+const crest = url => url ? `<img class="crest" src="${esc(/thesportsdb/.test(url) ? url + '/tiny' : url)}" alt="" onerror="this.remove()">` : '';
 const homeSide = ev => `${crest(ev.strHomeTeamBadge)}${esc(teamAr(ev.strHomeTeam, ev.idHomeTeam))}`;
 const awaySide = ev => `${esc(teamAr(ev.strAwayTeam, ev.idAwayTeam))}${crest(ev.strAwayTeamBadge)}`;
 
@@ -2631,7 +2639,7 @@ function matchMoments(){
   try{ localStorage.setItem('kick', JSON.stringify(KICK_SHOWN)); }catch(e){}
   if(!el) return;
   if(!live){ el.classList.remove('on'); return; }
-  const tv = channelOf(live), img = u => u ? `<img src="${esc(u)}/tiny" alt="" onerror="this.remove()">` : '';
+  const tv = channelOf(live), img = u => u ? `<img src="${esc(/thesportsdb/.test(u) ? u + '/tiny' : u)}" alt="" onerror="this.remove()">` : '';
   setHTML(el, `<div class="k1">⚽ بدأت المباراة</div>`
     + `<div class="k2">${img(live.strHomeBadge || live.strHomeTeamBadge)}${esc(teamAr(live.strHomeTeam, live.idHomeTeam))}<i>×</i>${esc(teamAr(live.strAwayTeam, live.idAwayTeam))}${img(live.strAwayBadge || live.strAwayTeamBadge)}</div>`
     + `<div class="k3">${esc(live.strLeague ? leagueAr(live) : '')}${tv ? ` · على <b>${esc(tv)}</b>` : ''}</div>`);
@@ -2652,15 +2660,55 @@ let TODAY_GAMES = [], TODAY_BY = {}, TODAY_DONE = new Set(), TODAY_DAY = '';
 // one call per league and day (walking the rounds took dozens and got the household's address blocked). The API
 // files games by their UTC date, the screen by Riyadh's: a Riyadh day also holds the UTC day before from 21:00
 // (the games after midnight here), so that day is asked too when `early` (once a day, and while such a game is on).
+// ESPN's public scoreboard first (a whole day's games in one answer, live minute and score, no key, no limit);
+// TheSportsDB when ESPN does not answer or does not carry the competition. ESPN's games are given TheSportsDB's
+// shape here, so everything after reads one kind of game.
+const ESPN_SLUG = {'4668': 'ksa.1', '5649': 'ksa.kings_cup', '5650': 'ksa.super_cup', '4719': 'afc.champions',
+  '4480': 'uefa.champions', '4328': 'eng.1', '4335': 'esp.1', '4332': 'ita.1'};
+function espnEvent(e, league, lgLogo){
+  const c = (e.competitions || [])[0] || {}, st = (e.status || c.status || {}), ty = st.type || {};
+  const side = h => (c.competitors || []).find(x => x.homeAway === h) || {};
+  const home = side('home'), away = side('away'), pre = ty.state === 'pre';
+  const name = String(ty.name || '');
+  const status = /POSTPONED/.test(name) ? 'Postponed' : /CANCELED|CANCELLED/.test(name) ? 'Cancelled' : /ABANDONED/.test(name) ? 'Abandoned'
+    : /SUSPENDED|DELAYED/.test(name) ? 'Suspended' : /HALFTIME/.test(name) ? 'HT' : ty.state === 'post' ? (/PEN/.test(name) ? 'PEN' : /AET|EXTRA/.test(name) ? 'AET' : 'FT')
+    : ty.state === 'in' ? 'LIVE' : 'NS';
+  const score = x => pre || x.score == null || x.score === '' ? null : String(typeof x.score === 'object' ? x.score.value : x.score).replace(/\.0$/, '');
+  const logo = x => (x.team || {}).logo || ((x.team || {}).logos || [{}])[0].href || '';
+  const minute = String(st.displayClock || '').replace(/[^0-9+]/g, '');
+  return {idEvent: 'espn' + e.id, idLeague: league, strLeagueBadge: lgLogo || '', strTimestamp: new Date(e.date).toISOString(),
+    strHomeTeam: (home.team || {}).displayName || '', strAwayTeam: (away.team || {}).displayName || '',
+    idHomeTeam: 'espn' + (home.team || {}).id, idAwayTeam: 'espn' + (away.team || {}).id,
+    strHomeTeamBadge: logo(home), strAwayTeamBadge: logo(away),
+    intHomeScore: score(home), intAwayScore: score(away), strStatus: status, strProgress: ty.state === 'in' && minute ? minute : ''};
+}
+async function espnDay(league, d){
+  const slug = ESPN_SLUG[league];
+  if(!slug) return null;
+  const j = await getJSON(`https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/scoreboard?dates=${d.replace(/-/g, '')}`, null);
+  if(!j || !Array.isArray(j.events)) return null;
+  const lg = (j.leagues || [])[0] || {}, logo = ((lg.logos || [])[0] || {}).href || '';
+  return j.events.map(e => espnEvent(e, league, logo)).filter(ev => ev.strHomeTeam && ev.strAwayTeam);
+}
+// one call per league and day (walking the rounds took dozens and got the household's address blocked). The APIs
+// file games by their own day, the screen by Riyadh's: a Riyadh day also holds the UTC day before from 21:00
+// (the games after midnight here), so that day is asked too when `early` (once a day, and while such a game is on).
 async function dayGames(league, early){
   const p = riyadhParts(), day = Date.UTC(p.y, p.mo - 1, p.d), iso = t => new Date(t).toISOString().slice(0, 10);
-  const one = async d => { const j = await sdbGet(`eventsday.php?d=${d}&l=${league}`) || await sdbGet(`eventsday.php?d=${d}&l=${league}`); return j ? (j.events || []) : null; };
-  const today = await one(iso(day));
-  if(!early) return today;
-  const before = await one(iso(day - 86400000));
-  if(today === null && before === null) return null;   // failed: null, not "no games"
+  const sdb = async d => { const j = await sdbGet(`eventsday.php?d=${d}&l=${league}`) || await sdbGet(`eventsday.php?d=${d}&l=${league}`); return j ? (j.events || []) : null; };
+  const one = async d => { const e = await espnDay(league, d); return e !== null ? e : sdb(d); };
+  // ESPN files a day by US time: the day after is asked too, so the evening games here are never missed
+  const days = early ? [day - 86400000, day, day + 86400000] : [day, day + 86400000];
+  const got = await Promise.all(days.map(t => one(iso(t))));
+  if(got.every(g => g === null)) return null;   // failed: null, not "no games"
   const seen = new Set();
-  return [...(before || []), ...(today || [])].filter(ev => ev && ev.idEvent && !seen.has(ev.idEvent) && seen.add(ev.idEvent));
+  return got.flat().filter(ev => ev && ev.idEvent && !seen.has(ev.idEvent) && seen.add(ev.idEvent));
+}
+// two providers' names for one team: «Al Hilal» and «Al-Hilal SFC», «Man City» and «Manchester City»
+function nameLike(a, b){
+  const w = n => teamKey(n).split(' ').filter(x => x.length > 2 && !/^(al|fc|sc|sfc|club|cf|de|the|united|city)$/.test(x));
+  const A = w(a), B = w(b);
+  return teamKey(a) === teamKey(b) || A.some(x => B.includes(x));
 }
 let TODAY_FAILED = new Set();
 async function loadToday(){
@@ -2683,11 +2731,17 @@ function buildToday(){
   const now = Date.now();
   // the followed teams' own games today too, whatever their competition (their fixtures are loaded anyway)
   const seen = new Set(got.flat().map(x => x.ev.idEvent)), day = IDF('en-CA',{timeZone:CONFIG.timezone}).format(new Date());
-  const own = [...Object.values(MATCHES), ...Object.values(NEXT_LIST).flat(), ...TEAM_FIX]
-    .filter(ev => ev && ev.idEvent && !seen.has(ev.idEvent) && seen.add(ev.idEvent) && riyadhDay(toDate(ev)) === day)
+  // the followed teams by name too (ESPN's games carry ESPN's ids), and a game both sources list shown once
+  const ownAll = [...Object.values(MATCHES), ...Object.values(NEXT_LIST).flat(), ...TEAM_FIX].filter(ev => ev && ev.idEvent);
+  const mineNames = new Set();
+  ownAll.forEach(ev => { if(mine.has(String(ev.idHomeTeam))) mineNames.add(teamKey(ev.strHomeTeam)); if(mine.has(String(ev.idAwayTeam))) mineNames.add(teamKey(ev.strAwayTeam)); });
+  const sameGame = (a, b) => Math.abs(toDate(a) - toDate(b)) < 20*60000 && [a.strHomeTeam, a.strAwayTeam].some(n => [b.strHomeTeam, b.strAwayTeam].some(m => nameLike(n, m)));
+  const listed = got.flat().map(x => x.ev);
+  const own = ownAll
+    .filter(ev => !seen.has(ev.idEvent) && seen.add(ev.idEvent) && riyadhDay(toDate(ev)) === day && !listed.some(l => sameGame(l, ev)))
     .map(ev => ({ev, rank: TOP_LEAGUES.length, lg: leagueAr(ev) || ev.strLeague || ''}));
-  TODAY_GAMES = [...got.flat(), ...own].filter(Boolean).map(x => Object.assign(x, {t: toDate(x.ev).getTime(),
-      mine: mine.has(String(x.ev.idHomeTeam)) || mine.has(String(x.ev.idAwayTeam))}))
+  const isMine = ev => mine.has(String(ev.idHomeTeam)) || mine.has(String(ev.idAwayTeam)) || mineNames.has(teamKey(ev.strHomeTeam)) || mineNames.has(teamKey(ev.strAwayTeam));
+  TODAY_GAMES = [...got.flat(), ...own].filter(Boolean).map(x => Object.assign(x, {t: toDate(x.ev).getTime(), mine: isMine(x.ev)}))
     .sort((a, b) => (gameState(b, now) === 'live') - (gameState(a, now) === 'live') || b.mine - a.mine || a.rank - b.rank || a.t - b.t);
   renderMatches();
 }
@@ -2741,7 +2795,8 @@ function sides(ev, st, scored){
  const up=st==='done' ? ' win' : ' lead', down=st==='done' ? ' lose' : ' behind';
  return h>a ? [up, down] : [down, up];
 }
-const teamCrest=b=>b?`<img src="${esc(b)}/tiny" alt="" onerror="this.style.visibility='hidden'">`:'<span class="ball">⚽</span>';
+const tiny=u=>/thesportsdb/.test(u) ? u+'/tiny' : u;
+const teamCrest=b=>b?`<img src="${esc(tiny(b))}" alt="" onerror="this.style.visibility='hidden'">`:'<span class="ball">⚽</span>';
 const leagueTag=(x,ev)=>{ const logo=leagueLogo(ev); return `${logo?`<img src="${esc(logo)}" alt="" onerror="this.remove()">`:'<span>🏆</span>'}<span>${esc(x.lg || ev.strLeague || '')}</span>`; };
 // today's game in the bottom panel, in the same four rows as the occasions and the series beside it:
 // the crests, the names, the score (or the days or the countdown to kick-off), the competition and when

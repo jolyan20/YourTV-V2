@@ -296,6 +296,29 @@ for (const [width, height] of [[1920, 1080], [1280, 720], [960, 540]]) {
   await ctx.close();
 }
 
+// ---- today's games from ESPN's scoreboard (TheSportsDB down): names in Arabic, the score and the minute
+{
+  const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+  const now = Date.now();
+  await ctx.route(/^https?:/, r => {
+    const u = r.request().url();
+    if(!/site\.api\.espn\.com/.test(u)) return r.abort();
+    const events = u.includes('/ksa.1/') ? [{ id: '1', date: new Date(now - 50 * 60000).toISOString().slice(0, 16) + 'Z',
+      status: { displayClock: "55'", type: { state: 'in', name: 'STATUS_SECOND_HALF' } },
+      competitions: [{ competitors: [{ homeAway: 'home', score: '2', team: { id: '9', displayName: 'Al Hilal', logo: 'https://a.espncdn.com/h.png' } },
+        { homeAway: 'away', score: '1', team: { id: '8', displayName: 'Al Nassr', logo: 'https://a.espncdn.com/n.png' } }] }] }] : [];
+    r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ leagues: [{}], events }) });
+  });
+  const p = await ctx.newPage();
+  await p.goto(page('tv.html') + '#panel=verse');
+  await p.waitForFunction(() => TODAY_GAMES.length > 0, null, { timeout: 15000 }).catch(() => {});
+  const t = await p.evaluate(() => document.getElementById('match-row').innerText.replace(/\s+/g, ' '));
+  check("today's games from the second source", /الهلال.*النصر.*٢.*١.*مباشرة.*٥٥/.test(t), t);
+  const img = await p.evaluate(() => [...document.querySelectorAll('#match-row img')].map(i => i.getAttribute('src')).join(' '));
+  check("its crests load as they are (no /tiny)", /espncdn\.com\/h\.png(\s|$)/.test(img), img);
+  await ctx.close();
+}
+
 await browser.close();
 console.log(failed ? `\n${failed} failed` : '\nall page tests passed');
 process.exit(failed ? 1 : 0);
