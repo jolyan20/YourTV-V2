@@ -98,7 +98,7 @@ final class ControlSync {
     }
 
     /** a plain GET over a socket (the app allows no other clear-text connections), home network or Tailscale only */
-    private static byte[] fetch(String host, String key, String path) throws Exception {
+    static byte[] fetch(String host, String key, String path) throws Exception {
         try (Socket s = new Socket()) {
             s.connect(new InetSocketAddress(host, ControlStore.PORT), 4000);
             s.setSoTimeout(8000);

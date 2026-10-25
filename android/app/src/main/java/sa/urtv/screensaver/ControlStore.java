@@ -168,7 +168,12 @@ final class ControlStore {
     }
 
     static void setQuran(Context c, boolean on) {
-        prefs(c).edit().putBoolean(KEY_QURAN, on).apply();
+        setQuran(c, on, ClockSync.now());
+    }
+
+    /** on or off from a household moment (ClockSync): every TV's window follows at that same moment */
+    static void setQuran(Context c, boolean on, long at) {
+        prefs(c).edit().putLong("quranAt", at).putBoolean(KEY_QURAN, on).apply();
     }
 
     static boolean quran(Context c) {

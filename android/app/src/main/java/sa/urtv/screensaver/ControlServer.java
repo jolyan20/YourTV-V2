@@ -160,6 +160,11 @@ final class ControlServer implements Runnable {
                 adhanVolume(new JSONObject(new String(body, StandardCharsets.UTF_8)).optBoolean("on"));
                 reply(s, 200, "application/json", "{\"ok\":true}", true); return;
             }
+            if ("/api/rev".equals(path)) {   // the screen page, every second: has anything changed, and the household's clock
+                if (!from.isLoopbackAddress()) { reply(s, 403, "text/plain", "local only", false); return; }
+                if ("OPTIONS".equals(method)) { reply(s, 204, "text/plain", "", true); return; }
+                reply(s, 200, "application/json", "{\"rev\":" + rev + ",\"offset\":" + ClockSync.offset + "}", true); return;
+            }
             if ("/api/clip".equals(path)) {   // the screen page: a message's YouTube clip, now
                 if (!from.isLoopbackAddress()) { reply(s, 403, "text/plain", "local only", false); return; }
                 if ("OPTIONS".equals(method)) { reply(s, 204, "text/plain", "", true); return; }
@@ -169,10 +174,10 @@ final class ControlServer implements Runnable {
                 int start = Math.max(0, a.optInt("start")), end = Math.min(3600, Math.max(start + 5, a.optInt("end", start + 240)));
                 if (MainActivity.up) {   // the screensaver or its preview is up: its window plays it
                     ControlStore.prefs(app).edit().putString("adhanPlay", new JSONObject().put("id", id).put("start", start)
-                        .put("end", end).put("at", System.currentTimeMillis()).toString()).apply();
+                        .put("end", end).put("at", ClockSync.now()).toString()).apply();
                 } else {   // the home screen (the launcher shows the same page): open the screen for the clip
                     app.startActivity(new android.content.Intent(app, MainActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                        .putExtra("clip", id).putExtra("start", start).putExtra("end", end));
+                        .putExtra("clip", id).putExtra("start", start).putExtra("end", end).putExtra("at", ClockSync.now()));
                 }
                 reply(s, 200, "application/json", "{\"ok\":true}", true); return;
             }
@@ -217,8 +222,21 @@ final class ControlServer implements Runnable {
             }
             if ("GET".equals(method) && "/api/peer".equals(path)) {   // another TV passing on a test, the Quran or "take it now"
                 if (!ControlSync.keyMatches(app, get(h, "x-sync", ""))) { failed(who); reply(s, 401, "text/plain", "sync", false); return; }
+                if ("clock=1".equals(query)) {   // ClockSync: this TV's household time and what it goes by
+                    reply(s, 200, "application/json", new JSONObject().put("ms", ClockSync.now()).put("id", ClockSync.name(app)).toString(), false); return;
+                }
+                if (query.startsWith("qt=")) {   // the leading TV's place in the Quran stream: «qt=<ms in the stream>a<household ms>»
+                    String[] v = query.substring(3).split("a");
+                    if (v.length == 2 && v[0].matches("[0-9]{1,12}") && v[1].matches("[0-9]{1,15}")) QuranWindow.follow(Long.parseLong(v[0]), Long.parseLong(v[1]));
+                    reply(s, 200, "application/json", "{\"ok\":true}", false); return;
+                }
                 if (query.startsWith("test=")) runTest(query.substring(5));
-                else if (query.startsWith("quran=")) ControlStore.setQuran(app, query.endsWith("1"));
+                else if (query.startsWith("quran=")) {   // «quran=1a<household ms>»: on (or off) at that moment, as on the TV that was asked
+                    String[] v = query.substring(6).split("a");
+                    long at = v.length == 2 && v[1].matches("[0-9]{1,15}") ? Long.parseLong(v[1]) : ClockSync.now();
+                    ControlStore.setQuran(app, "1".equals(v[0]), at);
+                    if ("1".equals(v[0])) openScreen();
+                }
                 else if (query.startsWith("pull=")) new Thread(() -> ControlSync.pull(app)).start();
                 reply(s, 200, "application/json", "{\"ok\":true}", false); return;
             }
@@ -294,8 +312,11 @@ final class ControlServer implements Runnable {
             if ("POST".equals(method)) {
                 JSONObject o = new JSONObject(new String(body, StandardCharsets.UTF_8));
                 if ("/api/quran".equals(path)) {
-                    ControlStore.setQuran(app, o.optBoolean("on"));
-                    ControlSync.tell(app, "quran=" + (o.optBoolean("on") ? 1 : 0));   // the household's other TVs too
+                    // every TV starts (or stops) the stream at the same household moment, 3 s from now
+                    long at = ClockSync.now() + 3000;
+                    ControlStore.setQuran(app, o.optBoolean("on"), at);
+                    ControlSync.tell(app, "quran=" + (o.optBoolean("on") ? 1 : 0) + "a" + at);   // the household's other TVs too
+                    if (o.optBoolean("on")) openScreen();
                     reply(s, 200, "application/json", "{\"ok\":true}", false); return;
                 }
                 if ("/api/test".equals(path)) {   // «تجربة الميزات» on the phone: on every TV of the household
@@ -312,6 +333,9 @@ final class ControlServer implements Runnable {
                     if (!known || !(v instanceof JSONObject || v instanceof JSONArray)) {
                         reply(s, 400, "application/json", "{\"error\":\"section\"}", false); return;
                     }
+                    // a message shows on every TV at the same moment: 2.5 s from now, time for the other TVs to take it
+                    if ("message".equals(section) && v instanceof JSONObject && !((JSONObject) v).optString("text").isEmpty())
+                        ((JSONObject) v).put("showAt", ClockSync.now() + 2500);
                     ControlStore.save(app, section, v.toString());
                     ControlSync.tell(app, "pull=1");   // the other TVs take it now, not at their next minute
                     reply(s, 200, "application/json", "{\"ok\":true}", false); return;
@@ -332,6 +356,15 @@ final class ControlServer implements Runnable {
                 .put("at", System.currentTimeMillis()).toString()).apply();
         } catch (Exception ignored) { }
         return true;
+    }
+
+    /** bumped on every change to the stored settings (ControlService); the screen page asks for it every second */
+    static volatile long rev = 0;
+
+    /** the screen up for the Quran stream when only the home screen (the launcher) is showing */
+    private void openScreen() {
+        if (MainActivity.up) return;
+        try { app.startActivity(new android.content.Intent(app, MainActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception ignored) { }
     }
 
     /** on: remember the TV's volume and set the adhan's (display.adhanVolume, 0..100, default 20); off: put it back */

@@ -214,6 +214,26 @@ for (const [width, height] of [[1920, 1080], [1280, 720], [960, 540]]) {
   await ctx.close();
 }
 
+// ---- the household in step: two TVs switched on at different times agree on the clock, the card and the message
+{
+  const a = await open('tv.html', 'panel=verse'), b0 = Date.now();
+  await new Promise(r => setTimeout(r, 2300));
+  const b = await open('tv.html', 'panel=verse');
+  const both = f => Promise.all([a.p.evaluate(f), b.p.evaluate(f)]);
+  const off = await a.p.evaluate(() => { const t = Date.now(); window.setClockOffset(5000); const d = Date.now() - t, n = new Date().getTime() - t; window.setClockOffset(0); return [d, n]; });
+  check('the household clock moves Date.now() and new Date()', off[0] >= 4990 && off[0] < 5100 && off[1] >= 4990 && off[1] < 5100, JSON.stringify(off));
+  const cards = await both(() => { window.adhkarTime = () => null; window.summaryTime = () => false; turnCard(); return [CARD_TURN, document.getElementById('week-hd').textContent]; });
+  check('the same card on both TVs', cards[0][0] === cards[1][0] && cards[0][1] === cards[1][1], JSON.stringify(cards));
+  const at = Date.now() + 1500;
+  await both(`CTRL.message = {text: 'العشاء جاهز', style: 'info', at: ${at} - 1500, showAt: ${at}, until: ${at} + 60000, sound: 'off'}; renderMessage();`);
+  const early = await both(() => document.getElementById('msgbox').classList.contains('on'));
+  await new Promise(r => setTimeout(r, Math.max(0, at - Date.now()) + 400));
+  const later = await both(() => document.getElementById('msgbox').classList.contains('on'));
+  check('the message waits for its moment, then shows on both TVs', !early[0] && !early[1] && later[0] && later[1], JSON.stringify([early, later]));
+  check('two TVs: no script errors', !a.errors.length && !b.errors.length, a.errors.concat(b.errors).join('; ') + ' ' + (Date.now() - b0));
+  await a.ctx.close(); await b.ctx.close();
+}
+
 // ---- a finished game's score stays up for a day, even when the API has already moved on
 {
   const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });

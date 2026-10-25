@@ -20,7 +20,7 @@ public class MainActivity extends Activity {
     static volatile boolean up = false;   // the screen is open (ControlServer: a message's clip plays here)
 
     private final SharedPreferences.OnSharedPreferenceChangeListener follow = (p, key) -> {
-        if (ControlStore.KEY_QURAN.equals(key) && quran != null && quran.isOn() != ControlStore.quran(this)) quran.toggle();
+        if (ControlStore.KEY_QURAN.equals(key) && quran != null) quran.setAt(ControlStore.quran(this), p.getLong("quranAt", 0));   // with the other TVs
         if ("display".equals(key) && quran != null && quran.isOn()) { quran.toggle(); quran.toggle(); }
         if ("adhanPlay".equals(key) && quran != null) quran.adhan(p.getString(key, "{}"));
     };
@@ -58,7 +58,8 @@ public class MainActivity extends Activity {
         String clip = i == null ? null : i.getStringExtra("clip");
         if (clip != null) {
             final int start = i.getIntExtra("start", 0), end = i.getIntExtra("end", 240);
-            root.postDelayed(() -> { if (quran != null) quran.playVideo(clip, start, end, null); }, 2500);
+            final long at = i.getLongExtra("at", ClockSync.now());
+            root.postDelayed(() -> { if (quran != null) quran.playVideo(clip, start, end, null, at); }, 2500);
             return;
         }
         String video = i == null ? null : i.getStringExtra("alarmVideo");
@@ -76,8 +77,7 @@ public class MainActivity extends Activity {
             case KeyEvent.KEYCODE_NUMPAD_ENTER:
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
                 if (e.getAction() == KeyEvent.ACTION_UP) {
-                    quran.toggle();
-                    ControlStore.setQuran(this, quran.isOn());
+                    QuranWindow.everywhere(this, !quran.isOn());   // on every TV at the same moment
                 }
                 return true;
             case KeyEvent.KEYCODE_DPAD_LEFT:     // the screens (family, each person): next and back

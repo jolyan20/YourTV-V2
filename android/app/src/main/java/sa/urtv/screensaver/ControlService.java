@@ -37,6 +37,7 @@ public class ControlService extends Service {
         } catch (Exception ignored) { }
     }
     private final android.content.SharedPreferences.OnSharedPreferenceChangeListener gameChanged = (p, key) -> {
+        ControlServer.rev++;   // the screen page sees it within a second
         if ("game".equals(key) && game != null) game.update();
         if ("alarm".equals(key)) MorningAlarm.schedule(this);
     };
@@ -53,10 +54,12 @@ public class ControlService extends Service {
         }
     };
 
-    // the household's other TVs: take what changed there (ControlSync), every minute
+    // the household's other TVs: take what changed there (ControlSync), every minute; one clock, every two
+    private int syncRuns = 0;
     private final Runnable sync = new Runnable() {
         public void run() {
-            new Thread(() -> ControlSync.pull(ControlService.this)).start();
+            final boolean clock = syncRuns++ % 2 == 0;
+            new Thread(() -> { if (clock) ClockSync.align(ControlService.this); ControlSync.pull(ControlService.this); }).start();
             handler.postDelayed(this, 60_000);
         }
     };

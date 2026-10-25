@@ -891,6 +891,23 @@ html:not(.widget) .dates .mchip{font-size:.62em}
 </main>
 
 <script>
+// The household's clock (ClockSync in the app): every TV of the house reads the same time, so the adhan, the alerts,
+// the cards and the message change on all of them at once. Date.now() and new Date() follow it.
+(function(){
+  const Real = Date; let off = 0;
+  class HouseDate extends Real {
+    constructor(...a){ if(a.length) super(...a); else super(Real.now() + off); }
+    static now(){ return Real.now() + off; }
+  }
+  window.Date = HouseDate;
+  window.setClockOffset = ms => { if(typeof ms === 'number' && isFinite(ms) && Math.abs(ms) < 6 * 3600000) off = ms; };
+})();
+// Runs fn on the household clock's own beat: at every multiple of ms (and again if the TV slept through one), so
+// two TVs running the same beat change at the same moment whenever each was switched on.
+function onBeat(ms, fn){
+  const next = () => setTimeout(() => { try{ fn(); }catch(e){} next(); }, ms - Date.now() % ms + 15);
+  next();
+}
 // daily background: one photo per Riyadh day, deterministic
 const BGS = [
   {u:"https://raw.githubusercontent.com/jolyan20/YourTV-V2/master/assets/backgrounds/9hWJs7iblh8.jpg", c:"NEOM · Unsplash", t:"الغروب على جبال الصحراء · نيوم", d:0.9},
@@ -1206,10 +1223,14 @@ async function loadPrayers(){
     const j = await r.json();
     if(!j?.data?.timings?.Fajr) throw 0;
     buildPrayers(j.data.timings);
+    try{ localStorage.setItem('prayers:' + url, JSON.stringify(j.data.timings)); }catch(_){}
   }catch(e){
-    try{ buildPrayers(computePrayers()); }catch(_){}
+    // the same times as the other TV: today's answer kept from earlier, and only then this TV's own reckoning
+    let kept = null; try{ kept = JSON.parse(localStorage.getItem('prayers:' + url) || 'null'); }catch(_){}
+    try{ buildPrayers(kept && kept.Fajr ? kept : computePrayers()); }catch(_){}
   }
   tickPrayer();
+  armAdhan();      // the next adhan to the second
   applyMode();     // day and night follow the real sunrise and Maghrib as soon as they are known
   tickRamadan();   // Ramadan mode needs the prayer times
   if(CONFIG.panel === 'prayers' || CONFIG.panel === 'home') renderPanel(false);
@@ -1436,6 +1457,35 @@ function showAlerts(turn){
   softHTML(box, html);
 }
 // the first 5 minutes after an adhan: a large panel over the card; the iqama countdown stays in the bottom panel
+// Every second: has anything changed on this TV (the phone, the other TV)? Then take it now, not at the next 10 s.
+// The answer also carries the household clock's offset (ClockSync).
+let REV = -1;
+async function watchRev(){
+  if(CONFIG.widget) return;
+  try{
+    const r = await fetchT('http://127.0.0.1:8766/api/rev', 900);
+    if(!r.ok) return;
+    const j = await r.json();
+    window.setClockOffset(+j.offset || 0);
+    if(REV !== -1 && j.rev !== REV) loadControl();
+    REV = j.rev;
+  }catch(e){}
+}
+// The adhan to the second: a timer for the next prayer's exact moment on the household clock, set again each minute
+// (and when the times load), so every TV starts it together instead of at its next 15-second check.
+let ADHAN_TIMER = null;
+function armAdhan(){
+  clearTimeout(ADHAN_TIMER);
+  if(!PRAYERS.length || CONFIG.widget) return;
+  const p = riyadhParts(), msNow = ((p.h * 60 + p.mi) * 60 + p.s) * 1000 + Date.now() % 1000;
+  const ahead = PRAYERS.map(x => (x.h * 60 + x.mi) * 60000 - msNow).filter(d => d > 0 && d <= 61000);
+  if(ahead.length) ADHAN_TIMER = setTimeout(() => { tickPrayer(); renderAlerts(); }, Math.min(...ahead) + 20);
+}
+// when this prayer's adhan began, on the household clock (ms)
+function prayerStart(cur){
+  const p = riyadhParts();
+  return Date.now() - Date.now() % 1000 - ((p.h * 60 + p.mi) * 60 + p.s) * 1000 + (cur.h * 60 + cur.mi) * 60000;
+}
 function renderAdhan(mins){
   const el = document.getElementById('adhan');
   if(!el || ADHAN_ACTIVE) return;
@@ -1484,9 +1534,11 @@ function playAdhan(cur){
     const current=media;
     const fail=()=>{if(finished || media!==current)return;if(isVideo && audio)start(audio,false);else finish();};
     media.onended=finish;media.onerror=fail;
-    media.onplaying=()=>clearTimeout(timer);
     media.onwaiting=()=>{clearTimeout(timer);timer=setTimeout(fail,15000);};
-    media.ontimeupdate=()=>{if(mode==='takbir' && current.currentTime>=30)finish();};
+    // in step with the other TVs: the adhan's place is the time since its moment on the household clock
+    const t0=cur.t0 || (typeof prayerStart==='function' ? prayerStart(cur) : Date.now()), keep=()=>{const want=(Date.now()-t0)/1000;if(want>.3 && (!current.duration || want<current.duration-.5) && Math.abs(current.currentTime-want)>.25)current.currentTime=want;};
+    media.onplaying=()=>{clearTimeout(timer);keep();};
+    media.ontimeupdate=()=>{if(mode==='takbir' && current.currentTime>=30){finish();return;}keep();};
     timer=setTimeout(fail,15000);
     try{const play=media.play();if(play)play.catch(fail);}catch(e){fail();}
   };
@@ -2182,8 +2234,10 @@ function switchScreen(d){
   crossfade(document.querySelector('.mid'), () => { renderWho(); renderPanel(false); renderAlerts(); });
 }
 function rotateScreens(){
-  const min = +((CTRL.screens || {}).rotate) || 0;
-  if(min > 0 && Date.now() - SCREEN_AT >= min * 60000) switchScreen(1);
+  const min = +((CTRL.screens || {}).rotate) || 0, n = SCREENS().length;
+  if(min <= 0 || n < 2 || GUEST()) return;
+  const k = Math.floor(Date.now() / (min * 60000)) % n;   // the same screen on every TV
+  if(k !== ((SCREEN_K % n) + n) % n) switchScreen(k - SCREEN_K);
 }
 // «النجوم»: a child's stars, given on the phone page (and one for each of their tasks marked done)
 const KIDS = () => ((CTRL.screens || {}).list || []).filter(x => x && x.kid && x.on !== false);
@@ -2211,6 +2265,9 @@ function renderMessage(){
   const el = document.getElementById('msgbox');
   if(!el) return;
   const m = CTRL.message;
+  // shown from its moment on the household clock (showAt, set by the TV that took it), so on every TV together
+  const wait = m && m.showAt ? m.showAt - Date.now() : 0;
+  if(wait > 0){ el.classList.remove('on'); clearTimeout(renderMessage.t); renderMessage.t = setTimeout(renderMessage, Math.min(wait, 10000)); return; }
   const on = m && m.text && (m.until || ((m.at || 0)+300000)) > Date.now();
   el.classList.toggle('on', !!on);
   if(on){
@@ -3090,10 +3147,9 @@ function turnCard(){
   if(ADHAN_ACTIVE)return;
   const body = document.getElementById('wbody');
   const all = cardSlides(), left = all.length && all[CARD_TURN % all.length];
-  if(left && left.kind === 'dhikr') DHIKR_TURN++;   // the dhikr slide just left: next one next time
-  if(left && left.kind === 'wird') WIRD_TURN++;     // and the wird goes on with its next part
-  if(left && left.kind === 'series') SERIES_TURN++; // the next three posters
-  CARD_TURN++;
+  // the card the household clock gives: every TV shows the same one; each slide's own turn counts full rounds
+  CARD_TURN = Math.floor(Date.now() / cardMs());
+  if(all.length){ const round = Math.floor(CARD_TURN / all.length); DHIKR_TURN = WIRD_TURN = SERIES_TURN = round; }
   crossfade(body, () => renderPanel(false));
 }
 
@@ -3596,12 +3652,14 @@ function boot(){
   loadPrayers(); loadMatches(); loadToday(); if(CONFIG.panel === 'shows') loadWeek(); loadWeather();
   applyNight(); pixelShift();
 
-  setInterval(tickClock, 1000);
-  setInterval(renderMessage,1000);
-  setInterval(() => showAlerts(true), 7000);
-  setInterval(()=>{ tickDates(); tickPrayer(); tickRamadan(); if(CONFIG.panel === 'prayers') renderPanel(false); }, 15000);
-  setInterval(() => renderMatches(false), 60000);
-  setInterval(() => renderMatches(true), CONFIG.matchPageMs);
+  onBeat(1000, tickClock);
+  onBeat(1000, renderMessage);
+  onBeat(7000, () => showAlerts(true));
+  onBeat(15000, ()=>{ tickDates(); tickPrayer(); tickRamadan(); if(CONFIG.panel === 'prayers') renderPanel(false); });
+  onBeat(60000, () => renderMatches(false));
+  onBeat(CONFIG.matchPageMs, () => renderMatches(true));
+  onBeat(1000, watchRev);   // a change from the phone (or the other TV) on screen within a second
+  armAdhan(); onBeat(60000, armAdhan);
   setInterval(loadPrayers, 6*3600*1000);
   setInterval(loadMatches, 30*60*1000);
   setInterval(loadToday, 10*60*1000);   // today's games; their live scores every 60 s (refreshLive)
@@ -3613,15 +3671,15 @@ function boot(){
     if(CONFIG.panel === 'shows' && WEEK_POOL.length > WEEK_ROWS) WEEK_PAGE++;   // the next five when its card comes round
   }, 25*1000);
   setInterval(applyNight, 60*1000);
-  setInterval(() => { tickRamadan(); tickFamily(); tickCountdowns(); }, 1000);   // occasions turn every 15 s; countdowns by the second
+  onBeat(1000, () => { tickRamadan(); tickFamily(); tickCountdowns(); });   // occasions turn every 15 s; countdowns by the second
   setInterval(() => loadSeries(true), 3*3600000);   // new episodes as they air
   setInterval(() => { autoQuran(); }, 60*1000); setTimeout(autoQuran, 8000);
-  setInterval(matchMoments, 15*1000); setTimeout(matchMoments, 20000);
-  setInterval(taskMoments, 15*1000);
+  onBeat(15000, matchMoments);
+  onBeat(15000, taskMoments);
   setTimeout(actx, 3000);   // the sound system ready before the first chime or whistle (it starts slowly)
-  setInterval(rotateScreens, 15*1000);
+  onBeat(15000, rotateScreens);
   window.switchScreen = switchScreen;   // the remote's left and right, from the app
-  if(ROTATES()){ const next = () => setTimeout(() => { turnCard(); next(); }, cardMs()); next(); }
+  if(ROTATES()){ const next = () => setTimeout(() => { turnCard(); next(); }, cardMs() - Date.now() % cardMs() + 15); next(); }
   setInterval(() => {   // the followed teams' card: next page every 10 s
     if(MATCH_PAGES > 1 && document.getElementById('week-hd').textContent === PANEL_TITLE.matches){ MATCH_CARD_PAGE++; renderPanel(false); }
   }, 10000);
