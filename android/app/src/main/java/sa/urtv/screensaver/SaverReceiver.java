@@ -63,13 +63,18 @@ public class SaverReceiver extends BroadcastReceiver {
                 return;
             }
             case "sa.yourtv.v2.screensaver.SYNC": {   // --es key <32+ characters> --es peers <the other TVs' addresses, comma separated>
+                                                     // [--es id <this TV's id: a-z 0-9 -> --es name <its name on the phone page>]
                 String k = i.getStringExtra("key"), peers = i.getStringExtra("peers");
-                if (k == null || !k.matches("[A-Za-z0-9]{32,128}") || peers == null || !peers.matches("[0-9.,]{7,200}")) {
-                    setResultData("error: --es key (32+ letters and digits) and --es peers (addresses, comma separated)");
+                String id = i.getStringExtra("id"), name = i.getStringExtra("name");
+                if (k == null || !k.matches("[A-Za-z0-9]{32,128}") || peers == null || !peers.matches("[0-9.,]{7,200}")
+                        || (id != null && !id.matches("[a-z0-9-]{1,20}")) || (name != null && (name.isEmpty() || name.length() > 30))) {
+                    setResultData("error: --es key (32+ letters and digits) and --es peers (addresses, comma separated); --es id a-z0-9-, --es name up to 30");
                     return;
                 }
-                ControlStore.prefs(c).edit().putString("syncKey", k).putString("syncPeers", peers).apply();
-                setResultData("sync: " + peers);
+                android.content.SharedPreferences.Editor e = ControlStore.prefs(c).edit().putString("syncKey", k).putString("syncPeers", peers);
+                if (id != null) e.putString("tvId", id).putString("tvName", name != null ? name : id);
+                e.apply();
+                setResultData("sync: " + peers + (id != null ? " as " + id : ""));
                 return;
             }
             case "sa.yourtv.v2.screensaver.TEST": {   // --es what whistle|chime|soft|kickoff|hour|adhan|weather|friday|series|overlay

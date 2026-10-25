@@ -120,8 +120,41 @@ final class ControlStore {
             o.put("gameUsed", p.getString("gameUsed", ""));
             try { o.put("selftest", new JSONObject(p.getString("selftest", "{}"))); } catch (Exception ignored) { }   // today's minutes on the PlayStation: "date:seconds"
             o.put("files", Uploads.list(c));   // the household's own files: the adhan, birthday photos
+            o.put("me", me(c));                // which TV this is: items and settings can be for one TV only
+            o.put("tvs", tvs(c));
         } catch (Exception ignored) { }
         return o;
+    }
+
+    /** this TV's id and name (set from the computer: SaverReceiver SYNC --es id --es name) */
+    static JSONObject me(Context c) throws Exception {
+        SharedPreferences p = prefs(c);
+        String id = p.getString("tvId", "");
+        return new JSONObject().put("id", id).put("name", p.getString("tvName", id));
+    }
+
+    /** the household's TVs: this one, then the others as they last answered (ControlSync) */
+    static org.json.JSONArray tvs(Context c) throws Exception {
+        org.json.JSONArray out = new org.json.JSONArray();
+        JSONObject mine = me(c);
+        if (!mine.optString("id").isEmpty()) out.put(mine);
+        JSONObject known = new JSONObject(prefs(c).getString("tvsKnown", "{}"));
+        for (Iterator<String> it = known.keys(); it.hasNext(); ) {
+            String id = it.next();
+            if (!id.equals(mine.optString("id"))) out.put(new JSONObject().put("id", id).put("name", known.getJSONObject(id).optString("name", id)));
+        }
+        return out;
+    }
+
+    /** remember another TV of the household by what it says it is */
+    static synchronized void knowTv(Context c, JSONObject tv) {
+        try {
+            String id = tv.optString("id");
+            if (!id.matches("[a-z0-9-]{1,20}")) return;
+            JSONObject known = new JSONObject(prefs(c).getString("tvsKnown", "{}"));
+            known.put(id, new JSONObject().put("name", tv.optString("name", id)).put("at", System.currentTimeMillis()));
+            prefs(c).edit().putString("tvsKnown", known.toString()).apply();
+        } catch (Exception ignored) { }
     }
 
     /** value is the section's JSON text, already parsed once by the caller */

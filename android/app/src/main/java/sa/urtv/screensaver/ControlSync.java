@@ -14,9 +14,10 @@ import java.security.MessageDigest;
 
 /**
  * The household's TVs share one set of data: tasks, reminders, family occasions, the screens, the wird, my series,
- * bedtime, sleep hours, the screen options, and the city and followed teams. Every minute each TV asks the others
- * (home network or Tailscale, set once from the computer: optimize/saver.sh sync) for what they hold, and keeps
- * whichever copy of each part was changed last. The message on the screen and game time stay with each TV.
+ * bedtime, sleep hours, the screen options, and the followed teams. Every minute each TV asks the others
+ * (home network or Tailscale, set once from the computer: SaverReceiver SYNC) for what they hold, and keeps
+ * whichever copy of each part was changed last. The message on the screen, game time and the city stay with each
+ * TV. An item or the screen options can still be for one TV only: it carries that TV's id (ControlStore.me).
  * The TVs prove themselves to each other with a shared random key; the phone's PIN is not involved.
  */
 final class ControlSync {
@@ -38,10 +39,11 @@ final class ControlSync {
                 .put("at", ControlStore.prefs(c).getLong("at:" + s, 0)));
         }
         out.put("sections", secs);
+        out.put("me", ControlStore.me(c));
         out.put("files", Uploads.list(c));
         JSONObject pr = ControlPrefs.read(c);
         out.put("prefs", new JSONObject().put("at", ControlStore.prefs(c).getLong("at:prefs", 0))
-            .put("v", new JSONObject().put("city", pr.getJSONArray("city").getString(0)).put("teams", pr.getJSONArray("teams"))));
+            .put("v", new JSONObject().put("teams", pr.getJSONArray("teams"))));   // the city stays each TV's own
         return out;
     }
 
@@ -54,6 +56,7 @@ final class ControlSync {
             if (!peer.matches("[0-9.]{7,15}")) continue;
             try {
                 JSONObject o = new JSONObject(new String(fetch(peer, key, "/api/sync"), StandardCharsets.UTF_8));
+                if (o.optJSONObject("me") != null) ControlStore.knowTv(c, o.getJSONObject("me"));
                 JSONObject secs = o.optJSONObject("sections");
                 for (String s : SECTIONS) {
                     JSONObject x = secs == null ? null : secs.optJSONObject(s);

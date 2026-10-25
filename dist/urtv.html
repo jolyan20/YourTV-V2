@@ -1947,11 +1947,19 @@ async function loadTeamFixtures(){
 
 // ---------- the phone page's settings, read from this TV (ControlServer, 127.0.0.1:8766) every 10 s ----------
 let CTRL = {};
+// The household's TVs share one set of data; an item marked with a TV's id is for that TV only, and the screen
+// options may have this TV's own copy (display.perTv[id]) over the shared ones.
+function forThisTv(o){
+  const me = (o.me && o.me.id) || '', mine = x => !x || !x.tv || x.tv === me;
+  ['tasks', 'reminders', 'family'].forEach(k => { if(Array.isArray(o[k])) o[k] = o[k].filter(mine); });
+  if(o.display){ const own = me && o.display.perTv && o.display.perTv[me]; o.display = Object.assign({}, o.display, own || {}); delete o.display.perTv; }
+  return o;
+}
 async function loadControl(){
   try{
     const r = await fetchT('http://127.0.0.1:8766/api/public', 4000);
     if(!r.ok) return;
-    const next = await r.json();
+    const next = forThisTv(await r.json());
     const changed = JSON.stringify(next.family || []) !== JSON.stringify(CTRL.family || []);
     const mine = o => JSON.stringify([o.tasks || [], o.reminders || []]);
     const todo = Object.keys(CTRL).length && mine(next) !== mine(CTRL);

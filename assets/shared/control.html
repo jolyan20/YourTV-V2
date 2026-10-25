@@ -25,6 +25,8 @@
   input,select,textarea{width:100%;background:#0e1814;color:var(--txt);border:1px solid var(--line);border-radius:12px;padding:11px;font:inherit}
   textarea{min-height:80px;resize:vertical}
   .row{display:flex;gap:8px} .row > *{flex:1}
+  body:not(.multi) .tv-row{display:none}
+  .tvtag{color:var(--gold);font-size:.85em}
   .tests{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   button{font:inherit;cursor:pointer}
   .main{width:100%;margin-top:12px;background:var(--gold);color:#1a1208;border:0;border-radius:12px;padding:12px;font-weight:600}
@@ -90,7 +92,7 @@
 </div>
 
 <div id="app" hidden>
-  <header><h1>التحكم بالشاشات</h1><select id="device-select" aria-label="الشاشة" style="width:auto" onchange="location.search='device='+encodeURIComponent(this.value)"><option value="local">TCL</option></select><button class="ghost small" onclick="logout()">خروج</button></header>
+  <header><h1>التحكم بالشاشات</h1><select id="device-select" aria-label="الشاشة" style="width:auto" onchange="location.search='device='+encodeURIComponent(this.value)"><option value="local">TCL</option></select><span class="muted tv-row" id="me-label"></span><button class="ghost small" onclick="logout()">خروج</button></header>
   <nav class="tabs" id="tabs"></nav>
 
   <section id="s-home">
@@ -143,6 +145,7 @@
       <label>موعد (اختياري) · ينبّه قبلها بنص ساعة</label>
       <input id="task-due" type="datetime-local">
       <label>لمن</label><select id="task-who" class="who-sel"></select>
+      <div class="tv-row"><label>يظهر على</label><select id="task-tv" class="tv-sel"></select></div>
       <button class="main" onclick="addTask()">إضافة</button>
     </div>
     <div class="card"><ul id="task-list"></ul>
@@ -156,6 +159,7 @@
       <label>الوقت</label>
       <input id="rem-time" type="time" value="08:00">
       <label>لمن</label><select id="rem-who" class="who-sel"></select>
+      <div class="tv-row"><label>يظهر على</label><select id="rem-tv" class="tv-sel"></select></div>
       <label>الأيام</label>
       <div class="chips" id="rem-days"></div>
       <div class="chips" style="margin-top:8px">
@@ -177,6 +181,7 @@
         <div><label>النوع</label>
           <select id="fam-kind"><option value="🎂|1">🎂 عيد ميلاد</option><option value="💍|1">💍 ذكرى زواج</option><option value="✈️|0">✈️ سفرة</option><option value="📅|0">📅 موعد</option><option value="🎓|0">🎓 تخرج</option><option value="💒|0">💒 زواج</option><option value="👶|0">👶 مولود</option><option value="🏥|0">🏥 موعد طبي</option><option value="🏠|0">🏠 انتقال</option><option value="🎉|0">🎉 مناسبة</option></select></div>
       </div>
+      <div class="tv-row"><label>يظهر على</label><select id="fam-tv" class="tv-sel"></select></div>
       <button class="main" onclick="addFamily()">إضافة</button>
     </div>
     <div class="card"><ul id="fam-list"></ul></div>
@@ -192,6 +197,7 @@
   <section id="s-screen">
     <div class="card">
       <h2>📍 المدينة</h2>
+      <p class="muted tv-row">المدينة خاصة بكل تلفزيون: هذي مدينة <b class="me-name"></b>.</p>
       <select id="city"><option>…</option></select>
       <button class="main" onclick="saveCity()">حفظ المدينة</button>
     </div>
@@ -201,6 +207,12 @@
       <label>أضف نادي (بالإنجليزي، مثل Hilal أو Arsenal)</label>
       <div class="row"><input id="team-q" enterkeyhint="search"><button class="ghost" style="flex:0 0 auto" onclick="searchTeam()">بحث</button></div>
       <ul id="team-results"></ul>
+    </div>
+    <div class="card tv-row">
+      <h2>📺 الإعدادات لـ</h2>
+      <select id="disp-tv" onchange="render()"></select>
+      <p class="muted" id="disp-tv-note">الإعدادات العامة تنطبق على كل التلفزيونات. اختر تلفزيوناً لتعطيه إعدادات خاصة فيه.</p>
+      <button class="ghost small" id="disp-tv-reset" hidden onclick="resetTvDisplay()">رجّع هذا التلفزيون للإعدادات العامة</button>
     </div>
     <div class="card">
       <h2>🗂️ البطاقات جنب الساعة</h2>
@@ -484,20 +496,21 @@ function render(){
   const tasks = STATE.tasks || [];
   $('task-list').innerHTML = tasks.length ? tasks.map((t, i) => `<li class="${t.done ? 'done' : ''}">
       <input type="checkbox" style="width:auto" ${t.done ? 'checked' : ''} onchange="toggleTask(${i})">
-      <span class="t">${esc(t.text)}${t.due ? `<small>${esc(t.due.replace('T', ' '))}</small>` : ''}</span>
+      <span class="t">${esc(t.text)}${t.due ? `<small>${esc(t.due.replace('T', ' '))}</small>` : ''}${tvTag(t)}</span>
       <button class="x" onclick="delItem('tasks', ${i})" aria-label="حذف">×</button></li>`).join('') : '<li class="muted">ما فيه مهام</li>';
   const all = STATE.reminders || [];
-  $('rem-list').innerHTML = all.length ? all.map((r, i) => `<li><span class="t">${esc(r.text)}<small>${t12(r.time)} · ${r.days.length === 7 ? 'كل يوم' : r.days.map(d => DAYS[d]).join('، ')}</small></span>
+  $('rem-list').innerHTML = all.length ? all.map((r, i) => `<li><span class="t">${esc(r.text)}<small>${t12(r.time)} · ${r.days.length === 7 ? 'كل يوم' : r.days.map(d => DAYS[d]).join('، ')}${tvTag(r)}</small></span>
       <button class="x" onclick="delItem('reminders', ${i})" aria-label="حذف">×</button></li>`).join('') : '<li class="muted">ما فيه تذكيرات</li>';
   const famAll = STATE.family || [];
   $('fam-list').innerHTML = famAll.length ? famAll.map((f, i) => { const ph = f.id && hasFile('fam-' + f.id);
-      return `<li><span class="t">${esc(f.icon || '')} ${esc(f.name)}<small>${esc(f.date)} · ${f.yearly ? 'كل سنة' : 'مرة وحدة'}${ph ? ' · 📷 فيه صورة' : ''}</small></span>
+      return `<li><span class="t">${esc(f.icon || '')} ${esc(f.name)}<small>${esc(f.date)} · ${f.yearly ? 'كل سنة' : 'مرة وحدة'}${ph ? ' · 📷 فيه صورة' : ''}${tvTag(f)}</small></span>
       <label class="ghost small">📷<input type="file" accept="image/*" style="display:none" onchange="famPhoto(${i}, this.files[0])"></label>
       ${ph ? `<button class="ghost small" onclick="unload('fam-${esc(f.id)}')">بدون صورة</button>` : ''}
       <button class="x" onclick="delItem('family', ${i})" aria-label="حذف">×</button></li>`; }).join('') : '<li class="muted">ما فيه مناسبات</li>';
   const sl = STATE.sleep || {};
   $('sleep-from').value = sl.from || '00:00'; $('sleep-to').value = sl.to || ''; $('sleep-off').checked = !!sl.off;
-  const d = STATE.display || {}, cards = d.cards || {}; $('salary-date').value=d.salaryDate||''; ['fitr','adha'].forEach((k,i)=>{const h=(d.salaryHolidays||[])[i]||{}; $('salary-'+k+'-from').value=h.from||''; $('salary-'+k+'-to').value=h.to||'';});
+  renderTvs();
+  const d = dispFor($('disp-tv').value), cards = d.cards || {}; $('salary-date').value=d.salaryDate||''; ['fitr','adha'].forEach((k,i)=>{const h=(d.salaryHolidays||[])[i]||{}; $('salary-'+k+'-from').value=h.from||''; $('salary-'+k+'-to').value=h.to||'';});
   $('cards').innerHTML = CARDS.map(([k, t]) => `<div class="switch"><span>${t}</span><input type="checkbox" data-card="${k}" ${cards[k] === false ? '' : 'checked'}></div>`).join('');
   $('card-sec').value = String(d.cardSec || 30); $('photo-min').value = String(d.photoMin || 30);
   $('q-size').value = d.quranSize || 's'; $('q-pos').value = d.quranPos || 'tc';
@@ -748,7 +761,7 @@ function sendMessage(){
 function clearMessage(){ save('message', {text: '', until: 0, at: Date.now()}); }
 function addTask(){
   const text = $('task-text').value.trim(); if(!text) return toast('اكتب المهمة', true);
-  save('tasks', [...(STATE.tasks || []), {id: uid(), text, due: $('task-due').value || '', done: false, who: $('task-who').value || ''}]);
+  save('tasks', [...(STATE.tasks || []), {id: uid(), text, due: $('task-due').value || '', done: false, who: $('task-who').value || '', ...tvOf('task-tv')}]);
   $('task-text').value = ''; $('task-due').value = '';
 }
 function toggleTask(i){
@@ -765,7 +778,7 @@ function addReminder(){
   const text = $('rem-text').value.trim(); if(!text) return toast('اكتب التذكير', true);
   const days = [...document.querySelectorAll('#rem-days input:checked')].map(x => +x.value);
   if(!days.length) return toast('اختر يوماً واحداً على الأقل', true);
-  save('reminders', [...(STATE.reminders || []), {id: uid(), text, time: $('rem-time').value || '08:00', days, who: $('rem-who').value || ''}]);
+  save('reminders', [...(STATE.reminders || []), {id: uid(), text, time: $('rem-time').value || '08:00', days, who: $('rem-who').value || '', ...tvOf('rem-tv')}]);
   $('rem-text').value = '';
 }
 function doneToday(i){
@@ -777,15 +790,41 @@ function addFamily(){
   const name = $('fam-name').value.trim(), date = $('fam-date').value;
   if(!name || !date) return toast('اكتب المناسبة وتاريخها', true);
   const [icon, yearly] = $('fam-kind').value.split('|');
-  save('family', [...(STATE.family || []), {id: uid(), name, date, icon, yearly: yearly === '1'}]);
+  save('family', [...(STATE.family || []), {id: uid(), name, date, icon, yearly: yearly === '1', ...tvOf('fam-tv')}]);
   $('fam-name').value = '';
 }
 function saveSleep(){ save('sleep', {from: $('sleep-from').value || '00:00', to: $('sleep-to').value || '', off: $('sleep-off').checked}); }
 function saveDisplay(){
   const cards = {}; document.querySelectorAll('[data-card]').forEach(x => cards[x.dataset.card] = x.checked);
-  save('display', {...(STATE.display||{}), salaryDate:$('salary-date').value, salaryHolidays:['fitr','adha'].map(k=>({from:$('salary-'+k+'-from').value,to:$('salary-'+k+'-to').value})), cards, cardSec: +$('card-sec').value, photoMin: +$('photo-min').value, quranSize: $('q-size').value, quranPos: $('q-pos').value,
+  const base = STATE.display || {}, tv = $('disp-tv').value;
+  const put = v => save('display', tv ? {...base, perTv: {...(base.perTv || {}), [tv]: v}} : {...base, ...v});
+  put({salaryDate:$('salary-date').value, salaryHolidays:['fitr','adha'].map(k=>({from:$('salary-'+k+'-from').value,to:$('salary-'+k+'-to').value})), cards, cardSec: +$('card-sec').value, photoMin: +$('photo-min').value, quranSize: $('q-size').value, quranPos: $('q-pos').value,
     adhanMode: $('adhan-mode').value, adhanFajrMode: $('adhan-fajr-mode').value, adhanVolume: $('adhan-volume').value === '' ? 20 : Math.max(0, Math.min(100, Math.round(+$('adhan-volume').value || 0))), autoQuran: $('auto-quran').checked, matchSound: $('match-sound').checked,
     whistle: $('whistle').value, taskSound: $('task-sound').checked, startOnPower: $('start-power').checked});
+}
+function resetTvDisplay(){
+  const base = STATE.display || {}, tv = $('disp-tv').value, per = {...(base.perTv || {})};
+  if(!tv || !confirm('يرجع هذا التلفزيون للإعدادات العامة؟')) return;
+  delete per[tv]; save('display', {...base, perTv: per});
+}
+// the household's TVs (once more than one shares this data): an item or the screen options can be for one of them
+const tvList = () => STATE.tvs || [];
+const tvName = id => (tvList().find(t => t.id === id) || {}).name || id;
+const tvOf = sel => $(sel).value ? {tv: $(sel).value} : {};
+const tvTag = x => x.tv ? ` <span class="tvtag">· 📺 ${esc(tvName(x.tv))}</span>` : '';
+function dispFor(tv){ const b = STATE.display || {}; return tv ? {...b, ...((b.perTv || {})[tv] || {})} : b; }
+function renderTvs(){
+  const l = tvList(), me = STATE.me || {};
+  document.body.classList.toggle('multi', l.length > 1);
+  const opts = '<option value="">📺 كل التلفزيونات</option>' + l.map(t => `<option value="${esc(t.id)}">${esc(t.name)}${t.id === me.id ? ' (هذا)' : ''}</option>`).join('');
+  document.querySelectorAll('.tv-sel').forEach(el => { const v = el.value; el.innerHTML = opts; el.value = v; });
+  const ds = $('disp-tv'), v = ds.value;
+  ds.innerHTML = '<option value="">الإعدادات العامة (كل التلفزيونات)</option>' + l.map(t => `<option value="${esc(t.id)}">${esc(t.name)} فقط${(STATE.display && STATE.display.perTv && STATE.display.perTv[t.id]) ? ' ✎' : ''}</option>`).join('');
+  ds.value = v;
+  $('disp-tv-reset').hidden = !(ds.value && STATE.display && STATE.display.perTv && STATE.display.perTv[ds.value]);
+  $('disp-tv-note').textContent = ds.value ? `تحفظ لـ«${tvName(ds.value)}» وحده، والبقية على الإعدادات العامة.` : 'الإعدادات العامة تنطبق على كل التلفزيونات. اختر تلفزيوناً لتعطيه إعدادات خاصة فيه.';
+  $('me-label').textContent = me.name ? '📺 ' + me.name : '';
+  document.querySelectorAll('.me-name').forEach(el => el.textContent = me.name || 'هذا التلفزيون');
 }
 
 // the screensaver's own settings: city and teams
