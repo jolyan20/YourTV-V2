@@ -25,6 +25,7 @@ import java.util.concurrent.Semaphore;
  *   GET  /api/state      everything                         } with the session key
  *   POST /api/save       {"section": "...", "value": ...}   } in the X-Key header
  *   POST /api/quran      {"on": true|false}                 }
+ *   POST /api/test       {"what": "adhan"|"kickoff"|...}    }
  * Wrong PINs: 5 from one address locks that address for 15 minutes; 20 in an hour from anywhere locks
  * logins for an hour. No cross-site access (CORS only for /api/public on this TV), strict security headers.
  */
@@ -124,7 +125,7 @@ final class ControlServer implements Runnable {
             String device=get(h,"x-device","");
             if(!device.isEmpty() && !device.equals("local")) {
                 if(!ControlStore.sessionValid(app,get(h,"x-key",""))) {reply(s,401,"application/json","{}",false);return;}
-                if(!path.matches("/api/(state|prefs|teams|shows|save|upload|quran|appupdate)(\\?.*)?")) {reply(s,403,"application/json","{}",false);return;}
+                if(!path.matches("/api/(state|prefs|teams|shows|save|upload|quran|appupdate|test)(\\?.*)?")) {reply(s,403,"application/json","{}",false);return;}
                 relayDevice(s,in,method,path,h,len,device); return;
             }
             byte[] body = new byte[upload ? 0 : len];
@@ -254,6 +255,16 @@ final class ControlServer implements Runnable {
                 JSONObject o = new JSONObject(new String(body, StandardCharsets.UTF_8));
                 if ("/api/quran".equals(path)) {
                     ControlStore.setQuran(app, o.optBoolean("on"));
+                    reply(s, 200, "application/json", "{\"ok\":true}", false); return;
+                }
+                if ("/api/test".equals(path)) {   // «تجربة الميزات» on the phone: the same tests as SaverReceiver TEST
+                    String what = o.optString("what");
+                    if (!what.matches("whistle|chime|soft|kickoff|hour|adhan|weather|friday|series|overlay")) {
+                        reply(s, 400, "application/json", "{\"error\":\"what\"}", false); return;
+                    }
+                    if ("overlay".equals(what)) new WeatherWatch(app).test();   // the notice over other apps
+                    else ControlStore.prefs(app).edit().putString("selftest", new JSONObject().put("what", what)
+                        .put("at", System.currentTimeMillis()).toString()).apply();
                     reply(s, 200, "application/json", "{\"ok\":true}", false); return;
                 }
                 if ("/api/save".equals(path)) {

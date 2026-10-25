@@ -25,6 +25,7 @@
   input,select,textarea{width:100%;background:#0e1814;color:var(--txt);border:1px solid var(--line);border-radius:12px;padding:11px;font:inherit}
   textarea{min-height:80px;resize:vertical}
   .row{display:flex;gap:8px} .row > *{flex:1}
+  .tests{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   button{font:inherit;cursor:pointer}
   .main{width:100%;margin-top:12px;background:var(--gold);color:#1a1208;border:0;border-radius:12px;padding:12px;font-weight:600}
   .ghost{background:transparent;border:1px solid var(--line);color:var(--txt);border-radius:12px;padding:10px 12px}
@@ -236,6 +237,23 @@
       <button class="main" onclick="saveDisplay()">حفظ إعدادات الشاشة</button>
     </div>
     <div class="card">
+      <h2>🧪 تجربة الميزات</h2>
+      <p class="muted">كل زر يشغّل الميزة على التلفزيون الآن بدون انتظار وقتها، بالإعدادات المحفوظة (احفظ أي تغيير أولاً). التنبيهات التجريبية تختفي بعد دقيقة.</p>
+      <div class="tests">
+        <button class="ghost" onclick="runTest('adhan')">🕌 الأذان</button>
+        <button class="ghost" onclick="runTest('kickoff')">⚽ بداية مباراة فريقك</button>
+        <button class="ghost" onclick="runTest('hour')">⏰ قبل المباراة بساعة</button>
+        <button class="ghost" onclick="runTest('whistle')">📣 صوت الصافرة</button>
+        <button class="ghost" onclick="runTest('chime')">🔔 تنبيه المهام</button>
+        <button class="ghost" onclick="runTest('soft')">🎵 التنبيه الناعم</button>
+        <button class="ghost" onclick="runTest('weather')">🌪️ تنبيه الغبار</button>
+        <button class="ghost" onclick="runTest('overlay')">📺 التنبيه فوق التطبيقات</button>
+        <button class="ghost" onclick="runTest('friday')">🕋 بث الحرم (٤٥ ثانية)</button>
+        <button class="ghost" onclick="runTest('series')">🎬 حلقة مسلسل جديدة</button>
+      </div>
+      <p id="test-status" class="muted"></p>
+    </div>
+    <div class="card">
       <h2>⬇️ تحديث التطبيق</h2>
       <p class="muted">ينزّل التلفزيون آخر نسخة بنفسه، وبعدها اضغط «تثبيت» على الشاشة بالريموت.</p>
       <p id="app-update" class="muted"></p>
@@ -395,6 +413,12 @@ async function appUpdate(now){
   $('app-update').textContent = 'جارٍ التحقق…';
   try{ $('app-update').textContent = (await api('/api/appupdate', now ? {} : undefined)).status; }
   catch(e){ $('app-update').textContent = 'تعذر الوصول للتلفزيون'; }
+}
+// the screen reads the test within 10 s (it asks this TV for the settings that often)
+async function runTest(what){
+  $('test-status').textContent = 'أُرسلت، تظهر على الشاشة خلال ١٠ ثوانٍ…';
+  try{ await api('/api/test', {what}); }
+  catch(e){ $('test-status').textContent = 'تعذر الوصول للتلفزيون'; }
 }
 function toast(t, err){ const e = $('toast'); e.textContent = t; e.className = 'toast' + (err ? ' err' : ''); e.style.display = 'block'; clearTimeout(toast.h); toast.h = setTimeout(() => e.style.display = 'none', 2200); }
 async function api(path, body){
