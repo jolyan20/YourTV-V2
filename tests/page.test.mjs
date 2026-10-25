@@ -55,13 +55,16 @@ for (const file of ['urtv.html', 'tv.html']) {
         const b = e.getBoundingClientRect(), cs = getComputedStyle(e);
         return cs.display !== 'none' && b.width && (b.left < -2 || b.right > innerWidth + 2 || b.bottom > innerHeight + 2);
       }).map(e => e.className || e.id || e.tagName).slice(0, 5);
+      // the time under the watch is written as the household writes it (02:30م, then 14:30): the rest in Arabic digits
+      const cw = document.querySelector('.clockwrap'); cw.style.display = 'none';
       const latin = (document.querySelector('.stage').innerText.match(/[0-9]+/g) || []).filter(x => x !== '500');
+      cw.style.display = '';
       return { hh, mm, h: toN(hh), m: toN(mm), ap: document.getElementById('ck-ap').textContent,
                sub: document.getElementById('clock-sub').textContent, off, latin,
                photo: !!document.querySelector('.photo').style.backgroundImage };
     });
-    check(`${tag}: 12-hour clock in Arabic digits`, /^[٠-٩]{1,2}$/.test(r.hh) && r.h >= 1 && r.h <= 12
-      && /^[٠-٩]{2}$/.test(r.mm) && r.m < 60 && ['ص', 'م'].includes(r.ap), JSON.stringify(r));
+    check(`${tag}: 12-hour clock under the watch (02:30م)`, /^[0-9]{2}$/.test(r.hh) && r.h >= 1 && r.h <= 12
+      && /^[0-9]{2}$/.test(r.mm) && r.m < 60 && ['ص', 'م'].includes(r.ap), JSON.stringify(r));
     check(`${tag}: city from the settings`, r.sub === 'بتوقيت جدة', r.sub);
     check(`${tag}: nothing off screen`, !r.off.length, r.off.join(', '));
     check(`${tag}: no Latin digits (except S&P 500)`, !r.latin.length, r.latin.join(' '));
@@ -82,8 +85,13 @@ const EXPECT = { prayers: [6, 'مواقيت اليوم'], forecast: [2, 'الط�
                  verse: [2, null], shows: [1, 'هذا الأسبوع'] };
 for (const [panel, [rows, title]] of Object.entries(EXPECT)) {
   const { p, ctx, errors } = await open('tv.html', 'teams=136013&panel=' + panel);
-  if (panel === 'verse') await p.evaluate(() => { window.adhkarTime = () => null; window.summaryTime = () => false; CARD_TURN = 0; renderPanel(false); });
-  if (SAMPLE[panel]) await p.evaluate(`(${SAMPLE[panel]})(); renderPanel(false);`);
+  // the card turns through its slides, the chosen box first: the first slide is the one checked
+  await p.evaluate(() => { window.adhkarTime = () => null; window.summaryTime = () => false; window.todaysFamily = () => []; });
+  if (panel === 'shows') await p.evaluate(() => { WEEK_POOL = [{ name: 'المؤسس عثمان', date: new Date().toISOString().slice(0, 10), ep: 'S6E12' }]; });
+  if (SAMPLE[panel]) await p.evaluate(`(${SAMPLE[panel]})();`);
+  // matches is one of the turning slides rather than the first: turn to it
+  await p.evaluate(() => { const k = cardSlides().findIndex(f => f().title === PANEL_TITLE.matches);
+    CARD_TURN = CONFIG.panel === 'matches' && k >= 0 ? k : 0; renderPanel(false); });
   const r = await p.evaluate(() => ({ n: document.querySelectorAll('#week-list li').length,
     hd: document.getElementById('week-hd').textContent, shown: getComputedStyle(document.querySelector('.week')).display !== 'none' }));
   check(`card ${panel}: no errors`, !errors.length, errors.join('; '));
@@ -184,6 +192,8 @@ for (const [width, height] of [[1920, 1080], [1280, 720], [960, 540]]) {
   });
   await p.waitForTimeout(1600);   // the new content has risen into place
   const bad = await p.evaluate(() => {
+    // an occasion turning over at that moment: measure where it settles
+    document.getAnimations().forEach(a => { try { if (a.effect.getTiming().iterations !== Infinity) a.finish(); } catch (e) {} });
     const out = [];
     document.querySelectorAll('.week,.v2-prayers,.v2-weather,.dates>div,.clockwrap,.v2-kids,.alerts,.bottom>*').forEach(box => {
       const B = box.getBoundingClientRect();
@@ -211,8 +221,8 @@ for (const [width, height] of [[1920, 1080], [1280, 720], [960, 540]]) {
   const p = await ctx.newPage();
   await p.goto(page('tv.html') + '#teams=136013&panel=verse');
   await p.waitForTimeout(800);
-  // the scoreboard: home name, goals, away name, goals
-  const score = t => /الهلال\D*٢\D*النصر\D*١/.test(t);
+  // the fixture row: home name (goals) × (goals) away name
+  const score = t => /الهلال\D*\(٢\)\D*\(١\)\D*النصر/.test(t);
   const slot = () => p.evaluate(() => matchCard().join(' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
   const game = (id, hoursAgo, score, status) => `({idEvent:'${id}', strHomeTeam:'Al-Hilal', strAwayTeam:'Al-Nassr',
     strTimestamp:new Date(Date.now() - ${hoursAgo} * 36e5).toISOString(), intHomeScore:${score ? score[0] : null},
@@ -235,7 +245,7 @@ for (const [width, height] of [[1920, 1080], [1280, 720], [960, 540]]) {
 
   await p.evaluate(`KEPT['136013'] = [${game('g1', 27, [2, 1], 'FT')}]; renderMatches();`);
   t = await slot();
-  check('a day later: score gone, next fixture shown', !score(t) && t.includes('متبقي'), t);
+  check('a day later: score gone, next fixture shown', !score(t) && /الهلال \(–\) × \(–\) النصر/.test(t), t);
   await ctx.close();
 }
 

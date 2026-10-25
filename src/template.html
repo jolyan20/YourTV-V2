@@ -711,6 +711,63 @@ html:not(.widget) .watch-time .clock .sep{display:inline;font-size:1em;padding:0
 html:not(.widget) .v2-weather{display:flex;flex-direction:column}
 html:not(.widget) #v2-forecast{flex:1 1 0;height:auto;min-height:0}
 html:not(.widget) #v2-series{flex:1 1 0;height:auto;min-height:0}
+/* R11: the bottom boxes on one level (the same four rows in each: picture, name, count, dates), the series as
+   posters, today's game in those rows, the followed teams' next five games as a list, an hourglass by every
+   countdown. */
+html:not(.widget) .bottom>*>.v2-section-title{height:3.4vh;min-height:3.4vh;margin-bottom:.6vh}
+html:not(.widget) .bottom .occasion-content,html:not(.widget) .v2-show,html:not(.widget) .mb4{
+  display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) 3.8vh 4.6vh 5.6vh;row-gap:.4vh;align-items:center;min-height:0;height:100%}
+html:not(.widget) .bottom .occasion-content>.oc-ic{height:100%;align-self:stretch}
+html:not(.widget) .bottom .occasion-content .oc-ic .occ-ic{height:100%;display:flex;align-items:center;justify-content:center}
+html:not(.widget) .bottom .occasion-content .oc-ic svg{height:7vh;width:7vh;max-height:100%}
+html:not(.widget) .bottom .occasion-content .oc-ic img{height:min(9vh,100%);max-height:100%;max-width:7vw}
+html:not(.widget) #v2-series{gap:1vw}
+html:not(.widget) .v2-show+.v2-show{border-right:1px solid #ffffff14}
+html:not(.widget) .v2-show .series-poster{grid-row:1;grid-column:1;position:relative;justify-self:center;align-self:stretch;height:100%;width:auto;aspect-ratio:2/3;
+  border-radius:8px;overflow:hidden;background:linear-gradient(160deg,#24483a,#0b1a12);border:1px solid #dcb86f55;box-shadow:0 .6vh 1.6vh #000a}
+html:not(.widget) .v2-show .series-poster img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.sp-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'ThmanyahDisplay','Thmanyah',serif;font-size:4vh;color:#dcb86f99}
+.sp-kind,.sp-ep,.sp-new{position:absolute;font-size:.62vw;line-height:1.5;padding:0 .4vw;border-radius:999px;white-space:nowrap}
+.sp-kind{top:.4vh;right:.3vw;background:#000000b3;color:#F1CF8A}
+.sp-ep{bottom:.4vh;left:50%;transform:translateX(-50%);background:#000000c0;color:#FFF3D6;direction:ltr}
+.sp-new{top:.4vh;left:.3vw;background:#147a46f0;color:#E8FFF1;border:1px solid #7FE0A8}
+html:not(.widget) .v2-show .series-copy>b{grid-row:2;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;line-height:3.8vh;height:3.8vh;font-size:1.05vw}
+html:not(.widget) .v2-show .series-copy .release-left{grid-row:3;display:flex;align-items:center;justify-content:center;gap:.35vw;font-size:1vw;height:4.6vh}
+html:not(.widget) .v2-show .series-copy .release-date{grid-row:4;font-size:.75vw;line-height:1.5;display:flex;flex-direction:column;align-items:center;justify-content:center;height:5.6vh}
+/* today's game: crests, names, score or count, competition and time */
+.mb-cr{display:flex;justify-content:space-around;align-items:center;height:100%;min-height:0}
+.mb-cr img,.mb-cr .ball{height:min(8vh,100%);width:5vw;object-fit:contain;font-size:4vh;display:flex;align-items:center;justify-content:center}
+.mb-nm{display:flex;justify-content:space-around;gap:.5vw;font-size:1.05vw;line-height:3.8vh;height:3.8vh;min-width:0}
+.mb-nm b{flex:1 1 0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;font-weight:500}
+.mb-sc{display:flex;align-items:center;justify-content:center;gap:1vw;height:4.6vh;font-family:'ThmanyahDisplay','Thmanyah',serif;font-size:1.7vw;color:#FFF3D6}
+.mb-sc i{font-style:normal;color:var(--gold);font-size:.8em}
+.mb-sc .cdx,.mb-sc .day-unit{font-family:'Thmanyah',sans-serif}
+.mb-sc .cdx{font-size:.62em}
+.mb-ft{display:flex;flex-direction:column;align-items:center;justify-content:center;height:5.6vh;font-size:.75vw;line-height:1.5;color:#D8CDB6;min-width:0}
+.mb-ft span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.mb-lg{display:flex;align-items:center;gap:.3vw;color:var(--gold)}
+.mb-lg img{height:2vh;width:auto;max-width:2vw;object-fit:contain}
+.mb4.live .mb-sc{color:#9FF0C2}
+.live{color:#71da98}
+/* the followed teams' next five games */
+#week-list.fx-list{display:flex;flex-direction:column;justify-content:flex-start;gap:.7vh;list-style:none;padding:0;margin:0}
+.week li.fx{flex:0 1 auto;min-height:0;max-height:20%;display:grid;grid-template-rows:auto auto auto;align-content:center;row-gap:.1vh;padding:.35vh .8vw;border:1px solid #dcb86f2e;border-radius:10px;background:#ffffff06;white-space:nowrap;line-height:1.35}
+.week li.fx.live{border-color:#71da98aa;background:#71da9812}
+.week li.fx.done{opacity:.85}
+.fx-lg{display:flex;align-items:center;justify-content:center;gap:.4vw;font-size:.85vw;color:var(--gold)}
+.fx-lg img{height:2vh;width:auto;max-width:2vw;object-fit:contain}
+.fx-dt{text-align:center;font-size:.8vw;color:#C6BBA4}
+.fx-tm{display:grid;grid-template-columns:3vw minmax(0,1fr) auto auto auto minmax(0,1fr) 3vw;align-items:center;column-gap:.6vw;font-size:1.15vw}
+.fx-c{display:flex;align-items:center;justify-content:center}
+.fx-c img,.fx-c .ball{height:3.2vh;width:3vw;object-fit:contain;font-size:2.4vh;display:flex;align-items:center;justify-content:center}
+.fx-n{min-width:0;overflow:hidden;text-overflow:ellipsis;font-weight:500;color:#F6EEDC}
+.fx-n.h{text-align:left}.fx-n.a{text-align:right}
+.fx-n.mine{color:#FFE7AE}
+.fx-g{font-family:'ThmanyahDisplay','Thmanyah',serif;color:#FFF3D6;min-width:2.2em;text-align:center}
+.fx-x{font-style:normal;color:var(--gold);font-size:.85em}
+/* every countdown with its hourglass */
+.cdx{display:inline-flex;align-items:center;gap:.3em;white-space:nowrap;vertical-align:middle}
+.cdx .sandglass{flex:none;width:1em;height:1.2em;color:#F1CF8A}
 </style>
 </head>
 <body>
@@ -862,7 +919,9 @@ function cdText(ms){
   const hms = ar(pad(h)) + ':' + ar(pad(m)) + ':' + ar(pad(x));
   return d ? (d === 1 ? 'يوم' : d === 2 ? 'يومين' : ar(d) + (d <= 10 ? ' أيام' : ' يوم')) + ' و ' + hms : hms;
 }
-const cdn = (t, done) => `<span class="cdn" data-to="${t}" data-done="${done || 'الآن'}">${cdText(t - Date.now())}</span>`;
+// every appointment's countdown with its hourglass, the sand running down (CSS .sandglass)
+const SAND = '<svg class="sandglass" viewBox="0 0 24 28" aria-hidden="true"><path d="M4 2h16M4 26h16M6 3c0 7 6 8 6 11S6 18 6 25M18 3c0 7-6 8-6 11s6 4 6 11" fill="none" stroke="currentColor" stroke-width="2"/><path class="sand-top" d="M7 5h10l-5 7z" fill="currentColor"/><path class="sand-stream" d="M12 13v7" stroke="currentColor" stroke-width="1.2" stroke-dasharray="1 2"/><path class="sand-bottom" d="M7 24l5-6 5 6z" fill="currentColor"/></svg>';
+const cdn = (t, done) => `<span class="cdx">${SAND}<span class="cdn" data-to="${t}" data-done="${done || 'الآن'}">${cdText(t - Date.now())}</span></span>`;
 function tickCountdowns(){
   const now = Date.now();
   document.querySelectorAll('[data-sand-to]').forEach(el=>{const f=el.querySelector('.sand-fill');if(f)f.style.transform='scaleY('+Math.min(1,Math.max(0,(+el.dataset.sandTo-now)/86400000))+')';});
@@ -1296,16 +1355,22 @@ function renderAlerts(){
 // One row under the card. When they do not all fit, they take turns a row at a time, most important first.
 let ALERT_PAGES = [], ALERT_PAGE = 0;
 function pageAlerts(box, items){
-  box.innerHTML = items.join('');
-  const room = box.clientWidth, gap = parseFloat(getComputedStyle(box).columnGap) || 0, pages = [];
+  // measured in a hidden copy of the row, so the row on the screen never shows them all at once
+  const cs = getComputedStyle(box), probe = box.cloneNode(false);
+  probe.removeAttribute('id');
+  probe.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;display:flex;flex-wrap:nowrap;width:auto';
+  probe.innerHTML = items.join('');
+  document.body.appendChild(probe);
+  const room = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 2;
+  const gap = parseFloat(cs.columnGap) || 0, pages = [];
   let used = Infinity;
-  [...box.children].forEach((el, i) => {
-    const w = el.offsetWidth;
+  [...probe.children].forEach((el, i) => {
+    const w = el.getBoundingClientRect().width;
     if(used + gap + w > room){ pages.push([]); used = -gap; }
     used += gap + w; pages[pages.length - 1].push(items[i]);
   });
+  probe.remove();
   ALERT_PAGES = pages.map(p => p.join(''));
-  box.__h = null;
   showAlerts(false);
 }
 function showAlerts(turn){
@@ -1618,11 +1683,10 @@ function renderOccasion(x, elL, elD, elS){
   const at=target-3*3600000, left=at-Date.now();
   setHTML(elS, `<span>${esc(gregDay(target))} ${esc(hijriDate(target))}</span><span>${esc(gregDate(target))}</span>` + (x.ord ? `<span>${esc(x.ord)}</span>` : ''));
   if(left<=0){elD.__remainingKey='';setHTML(elD,`<span class="greet">${esc(x.o.greet || 'اليوم')}</span>`);return;}
-  const sand=`<svg class="sandglass" viewBox="0 0 24 28" aria-hidden="true"><path d="M4 2h16M4 26h16M6 3c0 7 6 8 6 11S6 18 6 25M18 3c0 7-6 8-6 11s6 4 6 11" fill="none" stroke="currentColor" stroke-width="2"/><path class="sand-top" d="M7 5h10l-5 7z" fill="currentColor"/><path class="sand-stream" d="M12 13v7" stroke="currentColor" stroke-width="1.2" stroke-dasharray="1 2"/><path class="sand-bottom" d="M7 24l5-6 5 6z" fill="currentColor"/></svg>`;
   const remainingKey=left<=86400000 ? 'timer:'+at : 'days:'+Math.ceil(left/86400000);
   if(elD.__remainingKey===remainingKey)return;
   elD.__remainingKey=remainingKey;
-  setHTML(elD,left<=86400000 ? `<span class="occasion-count">${sand}${cdn(at,'حان الموعد')}</span>` : daysLeft(Math.ceil(left/86400000)));
+  setHTML(elD,left<=86400000 ? `<span class="occasion-count">${cdn(at,'حان الموعد')}</span>` : daysLeft(Math.ceil(left/86400000)));
 }
 function daysLeft(n){
   const [u, v] = n === 2 ? ['يومان', 'متبقيان'] : n >= 3 && n <= 10 ? ['أيام', 'متبقية'] : ['يوم', 'متبقي'];
@@ -2447,15 +2511,39 @@ function leagueLogo(ev){
  }
  return LEAGUE_ART[id]||'';
 }
-function todaySlot(x, now){
- const ev=x.ev, st=gameState(x,now), scored=ev.intHomeScore!=null && ev.intAwayScore!=null;
- const remaining=x.t-now;
+// a game's state in words, and when it is: «مباشرة · الدقيقة ٥٥», «انتهت المباراة», or «الأحد ٢٥ أكتوبر - ٩:٣٠ م»
+function gameWhen(x, now, withDate){
+ const ev=x.ev, st=gameState(x,now);
+ if(st==='off') return offLabel(ev);
+ if(st==='live') return '<b class="live">مباشرة</b>'+matchMinute(ev);
+ if(st==='done') return 'انتهت المباراة';
  const [kh,km]=IDF('en-GB',{timeZone:CONFIG.timezone,hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(x.t).split(':').map(Number);
- const status=st==='off'?offLabel(ev):st==='live'?'مباشرة'+matchMinute(ev):st==='done'?'انتهت المباراة':remaining>86400000?'متبقي '+ar(Math.ceil(remaining/86400000))+' يوم':cdn(x.t,'بدأت المباراة')+` <small>· ${fmt12(kh,km)}</small>`;
- const league=x.lg || ev.strLeague || '';
- const logo=leagueLogo(ev);
- const team=(name,id,badge,score)=>`<div class="match-team"><b>${esc(shortTeam(teamAr(name,id)))}</b>${badge?`<img src="${esc(badge)}/tiny" alt="" onerror="this.style.visibility='hidden'">`:'<span>⚽</span>'}<strong>${scored&&st!=='next'?ar(+score):'—'}</strong></div>`;
- return `<div class="match-board"><div class="league-name">${logo?`<img src="${esc(logo)}" alt="" onerror="this.remove()">`:'<span>🏆</span>'}${esc(league)}</div><div class="match-state ${st}">${status}</div><div class="match-teams">${team(ev.strHomeTeam,ev.idHomeTeam,ev.strHomeTeamBadge,ev.intHomeScore)}${team(ev.strAwayTeam,ev.idAwayTeam,ev.strAwayTeamBadge,ev.intAwayScore)}</div></div>`;
+ const day=IDF(GREG,{timeZone:CONFIG.timezone,weekday:'long'}).format(x.t);
+ return withDate ? `${esc(day)} ${esc(IDF(GREG,{timeZone:CONFIG.timezone,day:'numeric',month:'long'}).format(x.t))} - ${fmt12(kh,km)}` : `${esc(day)} · ${fmt12(kh,km)}`;
+}
+const teamCrest=b=>b?`<img src="${esc(b)}/tiny" alt="" onerror="this.style.visibility='hidden'">`:'<span class="ball">⚽</span>';
+const leagueTag=(x,ev)=>{ const logo=leagueLogo(ev); return `${logo?`<img src="${esc(logo)}" alt="" onerror="this.remove()">`:'<span>🏆</span>'}<span>${esc(x.lg || ev.strLeague || '')}</span>`; };
+// today's game in the bottom panel, in the same four rows as the occasions and the series beside it:
+// the crests, the names, the score (or the days or the countdown to kick-off), the competition and when
+function todaySlot(x, now){
+ const ev=x.ev, st=gameState(x,now), scored=ev.intHomeScore!=null && ev.intAwayScore!=null && (st==='live' || st==='done');
+ const left=x.t-now;
+ const mid=scored ? `<span class="mb-g">${ar(+ev.intHomeScore)}</span><i>-</i><span class="mb-g">${ar(+ev.intAwayScore)}</span>`
+   : st==='next' ? (left>86400000 ? daysLeft(Math.ceil(left/86400000)) : cdn(x.t,'بدأت المباراة')) : '<i>×</i>';
+ const nm=(n,id)=>`<b>${esc(shortTeam(teamAr(n,id)))}</b>`;
+ return `<div class="mb4 ${st}"><div class="mb-cr">${teamCrest(ev.strHomeTeamBadge)}${teamCrest(ev.strAwayTeamBadge)}</div>`
+  + `<div class="mb-nm">${nm(ev.strHomeTeam,ev.idHomeTeam)}${nm(ev.strAwayTeam,ev.idAwayTeam)}</div>`
+  + `<div class="mb-sc">${mid}</div><div class="mb-ft"><span class="mb-lg">${leagueTag(x,ev)}</span><span class="mb-st">${gameWhen(x,now,false)}</span></div></div>`;
+}
+// one of the followed teams' games on the card: the competition; the day, the date and the time; then
+// crest | name (goals) × (goals) name | crest
+function fixtureRow(x, now){
+ const ev=x.ev, st=gameState(x,now), scored=ev.intHomeScore!=null && ev.intAwayScore!=null && (st==='live' || st==='done');
+ const g=v=>`<span class="fx-g">(${scored ? ar(+v) : '–'})</span>`;
+ const mine=id=>CONFIG.teamIds.includes(String(id)) ? ' mine' : '';
+ return `<li class="fx ${st}"><div class="fx-lg">${leagueTag(x,ev)}</div><div class="fx-dt">${gameWhen(x,now,true)}</div>`
+  + `<div class="fx-tm"><span class="fx-c">${teamCrest(ev.strHomeTeamBadge)}</span><b class="fx-n h${mine(ev.idHomeTeam)}">${esc(shortTeam(teamAr(ev.strHomeTeam,ev.idHomeTeam)))}</b>${g(ev.intHomeScore)}`
+  + `<i class="fx-x">×</i>${g(ev.intAwayScore)}<b class="fx-n a${mine(ev.idAwayTeam)}">${esc(shortTeam(teamAr(ev.strAwayTeam,ev.idAwayTeam)))}</b><span class="fx-c">${teamCrest(ev.strAwayTeamBadge)}</span></div></li>`;
 }
 let MATCH_PAGE = 0;
 function matchMinute(ev){
@@ -2878,15 +2966,15 @@ function setCardTitle(hd, title){
 function renderPanel(animate){
   const ul = document.getElementById('week-list'), hd = document.getElementById('week-hd');
   const P = CONFIG.panel;
-  ul.classList.remove('match-grid');
-  if(ROTATES()){ const q = rotatingCard(); setCardTitle(hd, q.title); ul.innerHTML = q.rows.join(''); ul.classList.toggle('match-grid',!!ul.querySelector('.match-cell')); if(!ul.classList.contains('match-grid'))fitCard(ul); return; }
+  ul.classList.remove('match-grid','fx-list');
+  if(ROTATES()){ const q = rotatingCard(); setCardTitle(hd, q.title); ul.innerHTML = q.rows.join(''); ul.classList.toggle('fx-list',!!ul.querySelector('.fx')); if(!ul.classList.contains('fx-list'))fitCard(ul); return; }
   if(P === 'shows'){ renderWeekPage(animate); return; }
   let rows = [];
   if(P === 'prayers') rows = prayerRows();
   else if(P === 'forecast') rows = forecastRows();
-  else if(P === 'matches'){rows=matchCard();ul.classList.add('match-grid');}
+  else if(P === 'matches'){rows=matchCard();ul.classList.add('fx-list');}
   else if(P === 'home'){ setCardTitle(hd, 'الصلاة القادمة'); ul.innerHTML = homeRows().join(''); return; }
-  else if(P === 'verse'){ const q = CONFIG.widget ? quoteOfDay() : rotatingCard(); setCardTitle(hd, q.title); rows = q.rows; ul.innerHTML = rows.join(''); ul.classList.toggle('match-grid',!!ul.querySelector('.match-cell')); if(!ul.classList.contains('match-grid'))fitCard(ul); return; }
+  else if(P === 'verse'){ const q = CONFIG.widget ? quoteOfDay() : rotatingCard(); setCardTitle(hd, q.title); rows = q.rows; ul.innerHTML = rows.join(''); ul.classList.toggle('fx-list',!!ul.querySelector('.fx')); if(!ul.classList.contains('fx-list'))fitCard(ul); return; }
   if(PANEL_TITLE[P]) setCardTitle(hd, PANEL_TITLE[P]);
   if(!rows.length){
     ul.classList.remove('flip');
@@ -2953,9 +3041,9 @@ function matchCard(){
     .sort((a, b) => a.t - b.t);
   const done = items.filter(x => finishedRecently(x.ev, now)).slice(-2);
   const rest = items.filter(x => !finishedRecently(x.ev, now));
-  const all=[...done.slice(-1),...rest];
-  MATCH_PAGES=Math.max(1,Math.ceil(all.length/4));
-  return all.slice((MATCH_CARD_PAGE%MATCH_PAGES)*4,(MATCH_CARD_PAGE%MATCH_PAGES)*4+4).map(x=>`<li class="match-cell">${todaySlot({...x,lg:leagueAr(x.ev)},now)}</li>`);
+  // the last result while it is fresh, then the next games: five in all
+  MATCH_PAGES=1;
+  return [...done.slice(-1),...rest].slice(0,5).map(x=>fixtureRow({...x,lg:leagueAr(x.ev)},now));
 }
 
 let MATCH_CARD_PAGE = 0, MATCH_PAGES = 1;
@@ -3177,7 +3265,7 @@ function applyBackground(force){
 }
 
 // Last painted panels, shown at once on the next start while fresh data loads.
-const SNAP_KEY = 'snap-v2-r9:' + location.hash;   // bump when the panels' markup changes
+const SNAP_KEY = 'snap-v2-r10:' + location.hash;   // bump when the panels' markup changes
 const SNAP_SEL = ['#pt-strip', '#week-list', '#match-row'];
 function saveSnap(){
   try{ localStorage.setItem(SNAP_KEY, JSON.stringify(SNAP_SEL.map(q => (document.querySelector(q)||{}).innerHTML || ''))); }catch(e){}
@@ -3196,6 +3284,13 @@ function weatherDock(){
  const days=FORECAST.slice(1,5).map((d,i)=>`<div class="weather-day"><b>${i===0?'غداً':esc(IDF(GREG,{timeZone:'UTC',weekday:'long'}).format(new Date(d.date+'T12:00:00Z')))}</b>${svgIcon(wxIcon(d.code,false))}<span>${ar(Math.round(d.hi))}° <small>/ ${ar(Math.round(d.lo))}°</small></span></div>`).join('');
  return current+'<div class="weather-days">'+days+'</div>';
 }
+// a film's or a series' poster, upright, with what it is and the episode; its first letter when there is no poster
+function seriesPoster(it){
+  const ep = !it.movie && (it.next || it.prev || {}).code, initial = esc(String(it.name || '').trim().charAt(0));
+  return `<div class="series-poster"><span class="sp-ph">${initial}</span>`
+    + (it.poster ? `<img src="${esc(it.poster)}" alt="" onerror="this.remove()">` : '')
+    + `<span class="sp-kind">${esc(it.kind || '')}</span>${ep ? `<span class="sp-ep">${esc(ep)}</span>` : ''}${it.fresh ? '<span class="sp-new">جديد</span>' : ''}</div>`;
+}
 function renderV2(){
   softHTML(document.getElementById('v2-forecast'), weatherDock());
 
@@ -3203,10 +3298,11 @@ function renderV2(){
   const kids = GUEST() || !cardOn('stars') ? [] : KIDS().filter(k => sc.id === 'family' || k.id === sc.id);
   softHTML(document.getElementById('v2-kids'), kids.length ? '<h2>نجوم أبطال عائلتي</h2><div class="kids-grid">' + kids.map(k => `<div class="kid-card"><span class="kid-star">★</span><b>${esc(k.name)}</b><span class="kid-total">${ar(Math.max(0,+k.stars || 0))}<small>نجمة</small></span></div>`).join('') + '</div>' : '');
   const all = GUEST() || !cardOn('series') ? [] : seriesItems();
+  // two at a time, a new pair every 15 s, wrapping round so a page is never half empty
   const page=all.length ? Math.floor(Date.now()/15000)%Math.ceil(all.length/2) : 0;
-  const shown=all.slice(page*2,page*2+2);
+  const shown=all.length > 2 ? [all[page*2 % all.length], all[(page*2+1) % all.length]] : all;
   document.querySelector('.v2-series').style.visibility = GUEST() || !cardOn('series') ? 'hidden' : '';
-  softHTML(document.getElementById('v2-series'), shown.length ? shown.map(it=> `<div class="v2-show"><div class="series-poster">${it.poster ? `<img src="${esc(it.poster)}" alt="" onerror="this.style.display='none'">` : '🎬'}</div><div class="series-copy"><b>${esc(it.name)}</b>${whenText(it,Date.now())}</div></div>`).join('') : '<span class="sub">لا توجد تحديثات حالياً</span>');
+  softHTML(document.getElementById('v2-series'), shown.length ? shown.map(it=> `<div class="v2-show">${seriesPoster(it)}<div class="series-copy"><b>${esc(it.name)}</b>${whenText(it,Date.now())}</div></div>`).join('') : '<span class="sub">لا توجد تحديثات حالياً</span>');
 }
 function boot(){
   if(_Q.get('home') === '1') document.documentElement.classList.add('home-dashboard');

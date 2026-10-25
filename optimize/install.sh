@@ -70,6 +70,8 @@ if [ "$what" = saver ] || [ "$what" = all ]; then
     "settings put secure screensaver_enabled 1" \
     "settings put secure screensaver_components sa.yourtv.v2.screensaver/.ScreenDream" \
     "settings put secure screensaver_default_component sa.yourtv.v2.screensaver/.ScreenDream" \
+    "appops set sa.yourtv.v2.screensaver SYSTEM_ALERT_WINDOW allow" \
+    "appops set sa.yourtv.v2.screensaver REQUEST_INSTALL_PACKAGES allow" \
     "am start -n sa.yourtv.v2.screensaver/.SettingsActivity" \
     | "$PY" -I optimize/tv.py --batch
   echo "Screensaver installed and selected. Its settings screen is open on the TV."

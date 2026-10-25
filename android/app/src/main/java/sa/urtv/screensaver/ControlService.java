@@ -22,6 +22,7 @@ public class ControlService extends Service {
     private ControlServer server;
     private GameOverlay game;
     private WeatherWatch weather;
+    private NoticeOverlay notices;
     // the TV coming out of standby: the screen opens at once (the phone page can turn this off)
     private final android.content.BroadcastReceiver screenOn = new android.content.BroadcastReceiver() {
         @Override public void onReceive(Context c, Intent i) { handler.postDelayed(() -> openScreen(c), 1500); }
@@ -96,6 +97,8 @@ public class ControlService extends Service {
         MorningAlarm.schedule(this);
         weather = new WeatherWatch(this);
         weather.start();
+        notices = new NoticeOverlay(this);
+        notices.start();
         registerReceiver(screenOn, new android.content.IntentFilter(Intent.ACTION_SCREEN_ON));
     }
 
@@ -109,6 +112,7 @@ public class ControlService extends Service {
         ControlStore.prefs(this).unregisterOnSharedPreferenceChangeListener(gameChanged);
         if (game != null) game.stop();
         if (weather != null) weather.stop();
+        if (notices != null) notices.stop();
         try { unregisterReceiver(screenOn); } catch (Exception ignored) { }
         if (server != null) server.stop();
         super.onDestroy();

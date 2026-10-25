@@ -145,6 +145,7 @@ final class ControlServer implements Runnable {
             if ("/api/public".equals(path)) {   // the screensaver page on this TV: file:// origin, so CORS here only
                 if (!from.isLoopbackAddress()) { reply(s, 403, "text/plain", "local only", false); return; }
                 if ("OPTIONS".equals(method)) { reply(s, 204, "text/plain", "", true); return; }
+                NoticeOverlay.screenSeen = System.currentTimeMillis();   // the screen is up: it shows the notices itself
                 reply(s, 200, "application/json; charset=utf-8", ControlStore.state(app).toString(), true); return;
             }
             if ("/api/autoquran".equals(path)) {   // the screensaver page: the Makkah stream for Jumu'ah and Taraweeh
@@ -293,7 +294,7 @@ final class ControlServer implements Runnable {
     /** a test from the phone (or passed on by another TV): what waits for its moment, now; "stop" ends them */
     private boolean runTest(String what) {
         if (!what.matches("whistle|chime|soft|kickoff|hour|adhan|weather|friday|series|overlay|stop")) return false;
-        if ("overlay".equals(what)) { new WeatherWatch(app).test(); return true; }   // the notice over other apps
+        if ("overlay".equals(what)) { new WeatherWatch(app).test(); new NoticeOverlay(app).test(); return true; }   // the notices over other apps
         try {
             ControlStore.prefs(app).edit().putString("selftest", new JSONObject().put("what", what)
                 .put("at", System.currentTimeMillis()).toString()).apply();
