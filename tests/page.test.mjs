@@ -231,6 +231,9 @@ for (const [width, height] of [[1920, 1080], [1280, 720], [960, 540]]) {
   await p.evaluate(`MATCHES['136013'] = ${game('g1', 1.8, [2, 1], 'FT')}; renderMatches();`);
   let t = await slot();
   check('whistle blown: final score at once, not «مباشر»', t.includes('انتهت') && score(t) && !t.includes('مباشر'), t);
+  const marks = await p.evaluate(() => { const d = document.createElement('div'); d.innerHTML = matchCard().join('');
+    return [d.querySelector('.fx-n.h.win') && d.querySelector('.fx-n.h.win').textContent, d.querySelector('.fx-n.a.lose') && d.querySelector('.fx-n.a.lose').textContent]; });
+  check('the winner stands out, the loser steps back', marks[0] === 'الهلال' && marks[1] === 'النصر', JSON.stringify(marks));
 
   await p.evaluate(`keepResult('136013', MATCHES['136013']); MATCHES['136013'] = ${game('g2', -72, null, 'NS')};
                     RESULTS = {}; renderMatches();`);

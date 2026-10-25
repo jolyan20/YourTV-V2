@@ -44,10 +44,14 @@ final class AppUpdater {
                 return status = "اسمح للتطبيق بتثبيت التحديثات ثم أعد المحاولة";
             }
             // the home app first: installing this app ends this process
-            if (latest > home && home >= 0) install(c, "urtv-home.apk");
-            if (latest > mine) install(c, "urtv-screensaver.apk");
+            boolean both = latest > home && home >= 0 && latest > mine;
+            int parts = both ? 2 : 1;
+            if (latest > home && home >= 0) install(c, "urtv-home.apk", 1, parts);
+            if (latest > mine) install(c, "urtv-screensaver.apk", parts, parts);
+            UpdateProgress.hide();
             return status = "اضغط «تثبيت» على الشاشة";
         } catch (Exception e) {
+            UpdateProgress.hide();
             return status = "تعذر التحديث، تأكد من الاتصال";
         }
     }
@@ -61,15 +65,26 @@ final class AppUpdater {
         }
     }
 
-    private static void install(Context c, String apk) throws Exception {
+    private static void install(Context c, String apk, int part, int parts) throws Exception {
         PackageInstaller pi = c.getPackageManager().getPackageInstaller();
         int id = pi.createSession(new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL));
         try (PackageInstaller.Session session = pi.openSession(id)) {
             HttpURLConnection con = open(RELEASE + apk);
             try (InputStream in = con.getInputStream(); OutputStream out = session.openWrite(apk, 0, -1)) {
                 byte[] buf = new byte[65536];
-                int n;
-                while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                long size = con.getContentLength(), got = 0;
+                int n, shown = -1;
+                UpdateProgress.show(c, part, parts, 0);
+                while ((n = in.read(buf)) > 0) {
+                    out.write(buf, 0, n);
+                    got += n;
+                    int pct = size > 0 ? (int) (got * 100 / size) : 0;
+                    if (pct != shown) {   // the screen and the phone page follow it
+                        shown = pct;
+                        status = "جارٍ تنزيل التحديث" + (parts > 1 ? " (" + UpdateProgress.arabic(part) + " من " + UpdateProgress.arabic(parts) + ")" : "") + " · " + UpdateProgress.arabic(pct) + "٪";
+                        UpdateProgress.show(c, part, parts, pct);
+                    }
+                }
                 session.fsync(out);
             } finally {
                 con.disconnect();

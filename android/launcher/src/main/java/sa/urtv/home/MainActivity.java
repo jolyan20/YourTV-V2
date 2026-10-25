@@ -159,7 +159,8 @@ public class MainActivity extends Activity {
         if (last != null) last.requestFocus();
         // Catch installs/removals that happened while another app was in front.
         if (getPackageManager().getChangedPackages(packageSeq) != null) buildApps();
-        if (firstShow) { firstShow = false; playEntrance(); }
+        firstShow = false;
+        showApps(false, false);   // the screen first, as the screensaver shows it; Down brings the apps
         // New photo on return if the current one has been up for the full interval.
         if (wallIndex < 0 || SystemClock.elapsedRealtime() - wallChangedAt >= WALLPAPER_INTERVAL_MS) nextWallpaper();
         else scheduleWallpaper(WALLPAPER_INTERVAL_MS - (SystemClock.elapsedRealtime() - wallChangedAt));
@@ -189,6 +190,7 @@ public class MainActivity extends Activity {
         if (inputsPopup != null) inputsPopup.dismiss();
         if (!dockCards.isEmpty()) dockCards.get(0).requestFocus();
         scroll.smoothScrollTo(0, 0);
+        showApps(false, true);
     }
 
     @Override
@@ -243,7 +245,7 @@ public class MainActivity extends Activity {
         int screenH = getResources().getDisplayMetrics().heightPixels;
         content.addView(hero, new LinearLayout.LayoutParams(-1, screenH));
 
-        View nativeHeader = buildHeader();
+        nativeHeader = buildHeader();
         hero.addView(nativeHeader, lp(-1, -2, Gravity.TOP, dp(48), dp(12), dp(48), 0));
         // optional card under the pills, same size as beside the screensaver's clock
         homeCard = new HomeCard(this, hero, lp(-1, -1, Gravity.TOP, 0, 0, 0, 0));
@@ -254,6 +256,7 @@ public class MainActivity extends Activity {
         bottom.setClipChildren(false);
         bottom.setClipToPadding(false);
         hero.addView(bottom, lp(-1, -2, Gravity.BOTTOM, dp(48), 0, dp(48), dp(12)));
+        dockBand = bottom;
 
         title = text(34, "sans-serif-light", Color.WHITE);
         title.setVisibility(View.GONE);
@@ -983,22 +986,6 @@ public class MainActivity extends Activity {
 
     // ---------------------------------------------------------------- entrance
 
-    private void playEntrance() {
-        View header = hero.getChildAt(0);
-        header.setAlpha(0f);
-        header.setTranslationY(-dp(12));
-        header.animate().alpha(1f).translationY(0).setDuration(500).setStartDelay(80).start();
-        title.setAlpha(0f);
-        title.animate().alpha(1f).setDuration(500).setStartDelay(200).start();
-        for (int i = 0; i < dockRow.getChildCount(); i++) {
-            View t = dockRow.getChildAt(i);
-            t.setAlpha(0f);
-            t.setTranslationY(dp(24));
-            t.animate().alpha(1f).translationY(0).setInterpolator(new DecelerateInterpolator(2f))
-                    .setDuration(450).setStartDelay(160 + i * 60L).start();
-        }
-    }
-
     // ---------------------------------------------------------------- helpers
 
     private boolean launch(Intent i) {
@@ -1077,30 +1064,60 @@ public class MainActivity extends Activity {
         return Color.rgb((int) (Color.red(c) * f), (int) (Color.green(c) * f), (int) (Color.blue(c) * f));
     }
 
-    private boolean cardNavigation = false;
+    // The home screen is the screensaver's screen, whole. The apps wait under it: Down (or OK) brings the header
+    // and the favourites up from the bottom, Up from them or Back puts them away, and so do 20 s without a key.
+    private View nativeHeader, dockBand;
+    private boolean appsShown = true;
+    private final Runnable hideApps = () -> showApps(false, true);
+
+    private void showApps(boolean on, boolean animate) {
+        if (dockBand == null) return;
+        appsShown = on;
+        handler.removeCallbacks(hideApps);
+        long ms = animate ? 380 : 0;
+        dockBand.animate().translationY(on ? 0 : dp(240)).alpha(on ? 1f : 0f).setDuration(ms)
+            .setInterpolator(new DecelerateInterpolator(2f)).start();
+        nativeHeader.animate().alpha(on ? 1f : 0f).setDuration(ms).start();
+        gridShade.animate().alpha(0f).setDuration(ms).start();
+        if (on) {
+            if (!dockCards.isEmpty()) dockCards.get(0).requestFocus();
+            handler.postDelayed(hideApps, 20_000);
+        } else {
+            scroll.smoothScrollTo(0, 0);
+        }
+        if (homeCard != null) homeCard.focusCards(false);
+    }
+
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
         int key = e.getKeyCode();
-        if (cardNavigation && homeCard != null) {
-            if (key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                if (e.getAction() == KeyEvent.ACTION_UP) homeCard.navigate(key == KeyEvent.KEYCODE_DPAD_LEFT ? 1 : -1);
+        boolean up = e.getAction() == KeyEvent.ACTION_UP;
+        if (!appsShown) {
+            if (key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT) {   // the card, as on the screensaver
+                if (up && homeCard != null) homeCard.navigate(key == KeyEvent.KEYCODE_DPAD_LEFT ? 1 : -1);
                 return true;
             }
-            if (key == KeyEvent.KEYCODE_DPAD_DOWN || key == KeyEvent.KEYCODE_BACK || key == KeyEvent.KEYCODE_DPAD_UP) {
-                if (e.getAction() == KeyEvent.ACTION_UP) {
-                    cardNavigation = false; homeCard.focusCards(false);
-                    if (key == KeyEvent.KEYCODE_DPAD_UP && !pills.isEmpty()) pills.get(0).requestFocus();
-                }
+            if (key == KeyEvent.KEYCODE_DPAD_DOWN || key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER) {
+                if (up) showApps(true, true);
                 return true;
             }
-            if (key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER) return true;
-        }
-        if (key == KeyEvent.KEYCODE_DPAD_UP && dockCards.contains(getCurrentFocus()) && homeCard != null) {
-            if (e.getAction() == KeyEvent.ACTION_UP) { cardNavigation = true; homeCard.focusCards(true); }
-            return true;
+            if (key == KeyEvent.KEYCODE_DPAD_UP || key == KeyEvent.KEYCODE_BACK) return true;
+        } else {
+            handler.removeCallbacks(hideApps);
+            handler.postDelayed(hideApps, 20_000);
+            View f = getCurrentFocus();
+            if (key == KeyEvent.KEYCODE_BACK) {
+                if (up) { if (scroll.getScrollY() > 0 && !dockCards.isEmpty()) { dockCards.get(0).requestFocus(); scroll.smoothScrollTo(0, 0); } else showApps(false, true); }
+                return true;
+            }
+            if (key == KeyEvent.KEYCODE_DPAD_UP && pills.contains(f)) {   // above the header: back to the screen
+                if (up) showApps(false, true);
+                return true;
+            }
         }
         // Menu key on the remote opens the Inputs dropdown.
         if (e.getKeyCode() == KeyEvent.KEYCODE_MENU && e.getAction() == KeyEvent.ACTION_UP && !pills.isEmpty()) {
+            if (!appsShown) showApps(true, true);
             showInputs(pills.get(0));
             return true;
         }

@@ -29,6 +29,7 @@ final class HomeCard {
     private final ViewGroup parent;
     private final FrameLayout.LayoutParams params;
     private WebView web;
+    private long pageAt = -1;
     private String url;
 
     HomeCard(Activity activity, ViewGroup parent, FrameLayout.LayoutParams params) {
@@ -40,8 +41,8 @@ final class HomeCard {
     /** onResume: follow the current settings; a changed choice gets a fresh page. */
     void refresh() {
         String want = readUrl();
-        if (want == null) { destroy(); return; }
-        if (!want.equals(url)) { destroy(); create(want); }
+        long at = new java.io.File(activity.getFilesDir(), "web/tv.html").lastModified();
+        if (!want.equals(url) || at != pageAt) { destroy(); create(want); pageAt = at; }   // new settings or a new page
         web.onResume();
         web.resumeTimers();
     }
@@ -61,16 +62,33 @@ final class HomeCard {
         url = null;
     }
 
+    /** the screensaver's page with the screensaver's own settings: the home screen and the screensaver are one */
     private String readUrl() {
+        String page = page();
         try (Cursor c = activity.getContentResolver().query(CONFIG, null, null, null, null)) {
-            if (c == null || !c.moveToFirst()) return "file:///android_asset/web/tv.html#panel=verse&home=1";
-            String frag = c.getString(0), panel = c.getString(1);
-            if (frag == null) return null;
-            frag = frag.replaceAll("(^|&)(panel|week)=[^&]*", "");   // the screensaver's own card choice
-            return "file:///android_asset/web/tv.html#" + frag + "&panel=" + (panel == null || "none".equals(panel) ? "verse" : panel) + "&home=1";
+            if (c == null || !c.moveToFirst() || c.getString(0) == null) return page + "#home=1";
+            return page + "#" + c.getString(0) + "&home=1";
         } catch (RuntimeException e) {
-            return "file:///android_asset/web/tv.html#panel=verse&home=1";
+            return page + "#home=1";
         }
+    }
+
+    /** the page as the screensaver last updated it from GitHub (copied over), else the one built into this app */
+    private String page() {
+        java.io.File out = new java.io.File(activity.getFilesDir(), "web/tv.html");
+        try (java.io.InputStream in = activity.getContentResolver().openInputStream(android.net.Uri.withAppendedPath(CONFIG, "page"))) {
+            if (in != null) {
+                java.io.File tmp = new java.io.File(out.getParentFile(), "page.tmp");
+                if (!out.getParentFile().isDirectory()) out.getParentFile().mkdirs();
+                try (java.io.OutputStream o = new java.io.FileOutputStream(tmp)) {
+                    byte[] buf = new byte[65536];
+                    int n;
+                    while ((n = in.read(buf)) > 0) o.write(buf, 0, n);
+                }
+                if (tmp.length() > 30_000 && tmp.renameTo(out)) return "file://" + out.getAbsolutePath();
+            }
+        } catch (Exception ignored) { }   // the screensaver has not updated it yet: the built-in page
+        return out.isFile() ? "file://" + out.getAbsolutePath() : "file:///android_asset/web/tv.html";
     }
 
     @SuppressLint("SetJavaScriptEnabled")

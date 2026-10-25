@@ -32,6 +32,7 @@ public class ScreenDream extends DreamService {
 
     @Override
     public void onAttachedToWindow() {
+        MainActivity.up = true;
         super.onAttachedToWindow();
         setInteractive(true);   // keys reach dispatchKeyEvent below instead of waking the TV at once
         setFullscreen(true);
@@ -82,6 +83,7 @@ public class ScreenDream extends DreamService {
 
     @Override
     public void onDetachedFromWindow() {
+        MainActivity.up = false;
         ControlStore.prefs(this).unregisterOnSharedPreferenceChangeListener(follow);
         getSharedPreferences("settings", MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(reload);
         if (root != null) root.removeCallbacks(reloadNow);

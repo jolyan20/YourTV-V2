@@ -160,6 +160,22 @@ final class ControlServer implements Runnable {
                 adhanVolume(new JSONObject(new String(body, StandardCharsets.UTF_8)).optBoolean("on"));
                 reply(s, 200, "application/json", "{\"ok\":true}", true); return;
             }
+            if ("/api/clip".equals(path)) {   // the screen page: a message's YouTube clip, now
+                if (!from.isLoopbackAddress()) { reply(s, 403, "text/plain", "local only", false); return; }
+                if ("OPTIONS".equals(method)) { reply(s, 204, "text/plain", "", true); return; }
+                JSONObject a = new JSONObject(new String(body, StandardCharsets.UTF_8));
+                String id = a.optString("id");
+                if (!id.matches("[A-Za-z0-9_-]{11}")) { reply(s, 400, "text/plain", "id", true); return; }
+                int start = Math.max(0, a.optInt("start")), end = Math.min(3600, Math.max(start + 5, a.optInt("end", start + 240)));
+                if (MainActivity.up) {   // the screensaver or its preview is up: its window plays it
+                    ControlStore.prefs(app).edit().putString("adhanPlay", new JSONObject().put("id", id).put("start", start)
+                        .put("end", end).put("at", System.currentTimeMillis()).toString()).apply();
+                } else {   // the home screen (the launcher shows the same page): open the screen for the clip
+                    app.startActivity(new android.content.Intent(app, MainActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        .putExtra("clip", id).putExtra("start", start).putExtra("end", end));
+                }
+                reply(s, 200, "application/json", "{\"ok\":true}", true); return;
+            }
             if ("/api/adhan".equals(path)) {   // the screensaver page: play the adhan video now
                 if (!from.isLoopbackAddress()) { reply(s, 403, "text/plain", "local only", false); return; }
                 if ("OPTIONS".equals(method)) { reply(s, 204, "text/plain", "", true); return; }
@@ -253,7 +269,8 @@ final class ControlServer implements Runnable {
             if ("/api/logout".equals(path)) { ControlStore.endSession(app, key); reply(s, 200, "application/json", "{\"ok\":true}", false); return; }
             if ("/api/appupdate".equals(path)) {   // «تحديث التطبيق» on the phone: download here, «تثبيت» on the TV
                 if ("POST".equals(method)) new Thread(() -> AppUpdater.run(app, true)).start();
-                String st = "POST".equals(method) ? "جارٍ التنزيل… اضغط «تثبيت» على الشاشة" : AppUpdater.run(app, false);
+                // while a download runs, its progress («… · ٤٥٪»); else whether there is an update
+                String st = "POST".equals(method) ? "جارٍ تنزيل التحديث · ٠٪" : AppUpdater.status().startsWith("جارٍ") ? AppUpdater.status() : AppUpdater.run(app, false);
                 reply(s, 200, "application/json; charset=utf-8", new JSONObject().put("status", st).toString(), false); return;
             }
             if ("GET".equals(method) && "/api/state".equals(path)) {

@@ -618,7 +618,6 @@
 /* R7: approved six-row layout. All panel sizes are independent of their content. */
 *{box-sizing:border-box}
 html:not(.widget) .stage{display:grid;position:relative;direction:ltr;height:100vh;padding:2vh 2.6vw 2.5vh;grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:11fr 12fr 18fr 10fr 7fr 33fr;gap:1.1vh 1.4vw;min-height:0}
-html.home-dashboard .stage{height:91vh;padding-top:8vh;padding-bottom:1vh}
 html:not(.widget) .top,html:not(.widget) .mid,html:not(.widget) .markets,html:not(.widget) .v2-utilities{display:contents}
 html:not(.widget) .stage>*{min-width:0;min-height:0}
 html:not(.widget) .week{grid-column:1/7;grid-row:1/5;position:relative;width:100%;justify-self:stretch;height:100%;margin:0;padding:2vh 1.5vw;overflow:hidden;direction:rtl;border:1px solid #dcb86f55;border-radius:14px;background:#081710b3}
@@ -649,7 +648,6 @@ html:not(.widget) .bottom>#p-occ,html:not(.widget) .bottom>#p-fam,html:not(.widg
 .bottom .occasion-content>.oc-ic,.bottom .occasion-content>.label,.bottom .occasion-content>.big,.bottom .occasion-content>.sub{grid-column:1;width:100%;min-width:0;justify-content:center}
 .bottom .occasion-content>.sub{align-self:center;font-size:.75vw!important}.bottom .occasion-content>.sub span{white-space:normal}
 .clock-face .clock .ampm{align-self:center;margin:0 .15em 0 0}.clockwrap .subline{letter-spacing:0}
-html.home-dashboard .stage{height:90vh}
 
 /* R8: poster/text split from the supplied reference, larger clock and isolated weather styling. */
 html:not(.widget) .stage{grid-template-rows:11fr 14fr 28fr 8fr 7fr 30fr}
@@ -768,6 +766,45 @@ html:not(.widget) .v2-show .series-copy .release-date{grid-row:4;font-size:.75vw
 /* every countdown with its hourglass */
 .cdx{display:inline-flex;align-items:center;gap:.3em;white-space:nowrap;vertical-align:middle}
 .cdx .sandglass{flex:none;width:1em;height:1.2em;color:#F1CF8A}
+/* R12: the winner and the team ahead stand out; the side behind steps back */
+.fx-n.win,.fx-n.lead,.mb-nm .win,.mb-nm .lead{color:#FFE7AE;font-weight:700}
+.fx-g.win,.fx-g.lead,.mb-g.win,.mb-g.lead{color:#1b1206;background:linear-gradient(180deg,#F6DC93,#D4A94F);border-radius:6px;padding:0 .35em;box-shadow:0 0 1.2vh #f3d48a88}
+.fx-n.win::after,.mb-nm .win::after{content:' 🏆';font-size:.8em}
+.fx-n.lead::after,.mb-nm .lead::after{content:' ▲';font-size:.6em;color:#71da98;vertical-align:.2em}
+.fx-n.lose,.fx-g.lose,.fx-c.lose,.mb-nm .lose,.mb-g.lose,.mb-cr .lose,.fx-n.behind,.mb-nm .behind{opacity:.55}
+.fx-g.draw,.mb-g.draw{color:#E8DFC9}
+.mb-cr span{display:flex;align-items:center;justify-content:center;height:100%}
+.mb-cr .win img,.mb-cr .lead img{filter:drop-shadow(0 0 1vh #f3d48aaa)}
+/* R13: the tower's light (beamState): the face lights up and pulses green and white, a halo round the frame,
+   and at the adhan rays turn slowly round it */
+html:not(.widget) .clockwrap{overflow:visible}
+.clock-face::before,.clock-face::after{content:'';position:absolute;pointer-events:none;opacity:0}
+.clock-face::after{inset:6%;border-radius:50%;z-index:2;mix-blend-mode:screen;
+  background:radial-gradient(circle,rgba(255,255,255,.55) 0%,rgba(170,255,200,.45) 38%,rgba(90,255,150,.25) 62%,rgba(90,255,150,0) 72%)}
+.clock-face::before{inset:-26%;border-radius:50%;z-index:-1;
+  background:radial-gradient(circle,rgba(150,255,190,.85) 34%,rgba(130,255,175,.45) 46%,rgba(130,255,175,.15) 58%,rgba(130,255,175,0) 70%)}
+.clock-face.beam::after{animation:beamPulse 3s ease-in-out infinite}
+.clock-face.beam::before{animation:beamPulse 3s ease-in-out infinite}
+.clock-face.beam .wnight{opacity:1}
+.clock-face.beam .wdusk{opacity:0}
+.clock-face.beam .hd{opacity:0}.clock-face.beam .hn{opacity:1}
+.clock-face.beam-adhan::after{animation-duration:1.4s}
+.clock-face.beam-adhan::before{animation:beamPulse 1.4s ease-in-out infinite,beamSpin 40s linear infinite;
+  background:radial-gradient(circle,rgba(130,255,175,.6) 30%,rgba(130,255,175,0) 50%),
+    repeating-conic-gradient(from 0deg,rgba(235,255,240,.7) 0deg 1.4deg,rgba(140,255,180,0) 1.4deg 10deg);
+  -webkit-mask:radial-gradient(circle,#000 34%,rgba(0,0,0,.5) 52%,transparent 70%);
+          mask:radial-gradient(circle,#000 34%,rgba(0,0,0,.5) 52%,transparent 70%)}
+@keyframes beamPulse{0%,100%{opacity:.3}50%{opacity:1}}
+@keyframes beamSpin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.clock-face.beam::before,.clock-face.beam::after{animation:none;opacity:.8}}
+/* a larger watch, and the four date boxes in one rhythm: the day large and gold, the Hijri bright, the other two quieter */
+html:not(.widget) .stage{grid-template-rows:9fr 10fr 34fr 7fr 29fr}
+html:not(.widget) .dates{grid-column:7/10;grid-template-rows:1.15fr 1fr 1fr 1fr;gap:.9vh}
+html:not(.widget) .dates>div:not(.rule){justify-content:center;padding:0 .8vw;font-size:1.2vw;line-height:1.35}
+html:not(.widget) .dates #day-name{font-family:'ThmanyahDisplay','Thmanyah',serif;font-weight:700;font-size:1.75vw;color:var(--gold);letter-spacing:.02em}
+html:not(.widget) .dates .hijri{font-weight:500;color:#FFF3D6}
+html:not(.widget) .dates .greg,html:not(.widget) .dates .shamsi{font-size:1.08vw;color:#E2D8C2}
+html:not(.widget) .dates .mchip{font-size:.62em}
 </style>
 </head>
 <body>
@@ -973,6 +1010,7 @@ function tickClock(){
   if(w24) w24.textContent = pad(p.h) + ':' + pad(p.mi);
   const face = document.querySelector('.clock-face');
   if(face && DAY_TIMES) watchLight(face, p.h * 60 + p.mi, DAY_TIMES);
+  if(face){ const b = beamState(p); face.classList.toggle('beam', !!b); face.classList.toggle('beam-adhan', b === 'adhan'); }
   const dw = document.getElementById('v2-date');
   if(dw) dw.textContent = ar(p.d);
   applyMode();
@@ -1011,6 +1049,19 @@ function watchLight(face, minutes, times){
   const smooth = night * night * (3 - 2 * night);
   face.style.setProperty('--night', smooth.toFixed(3));
   face.style.setProperty('--dusk', (4 * night * (1 - night)).toFixed(3));
+}
+// The tower's light, as the Makkah clock does: a strong pulse with rays for the first five minutes of each adhan,
+// and a gentle glow on the great days (the first of Ramadan and its last ten nights, Arafah, both Eids and the days
+// of Tashreeq, the Hijri new year). Night lighting stays on while it shines.
+function beamState(p){
+  const mins = p.h * 60 + p.mi;
+  if(PRAYERS.some(x => mins >= x.h * 60 + x.mi && mins < x.h * 60 + x.mi + 5)) return 'adhan';
+  try{
+    const h = hijriOf(new Date());
+    if((h.m === 9 && h.d === 1) || (h.m === 10 && h.d === 1) || (h.m === 12 && h.d >= 9 && h.d <= 13) || (h.m === 1 && h.d === 1)) return 'feast';
+    if(h.m === 9 && h.d >= 20 && isNight()) return 'feast';
+  }catch(e){}
+  return '';
 }
 // the watch fills its box above the two time lines whatever the box's size
 function fitWatch(){
@@ -2166,8 +2217,37 @@ function renderMessage(){
     const types={info:['✉️','رسالة'],alert:['🔔','تنبيه'],welcome:['👋','ترحيب'],urgent:['⚠️','تحذير'],reminder:['⏰','تذكير'],congrats:['🎉','تهنئة'],announcement:['📢','إعلان'],thanks:['💐','شكر وتقدير']};
     const kind=types[m.style] ? m.style : 'info', type=types[kind];
     el.dataset.kind=kind;
-    setHTML(el,`<div class="message-heading"><span>${type[0]}</span><span class="message-divider">|</span><b>${type[1]}</b></div><div class="m-tx">${esc(m.text)}</div><div class="message-sender">${esc(m.sender || 'النظام')}</div>`);
+    setHTML(el,`<div class="message-heading"><span>${type[0]}</span><span class="message-divider">|</span><b>${type[1]}</b></div><div class="m-tx">${esc(m.text)}</div><div class="message-sender">${esc(m.sender || 'النظام')}${m.clip ? ' · ▶️ مقطع' : ''}</div>`);
+    // once per message: its sound, then its clip (the app plays YouTube in the screen's window)
+    if(MSG_DONE !== String(m.at)){
+      MSG_DONE = String(m.at);
+      try{ localStorage.setItem('msgDone', MSG_DONE); }catch(e){}
+      try{ if(m.sound !== 'off') messageTone(kind); }catch(e){}
+      if(m.clip && m.clip.id) setTimeout(() => { try{ fetch('http://127.0.0.1:8766/api/clip', {method:'POST', body: JSON.stringify(m.clip)}).catch(()=>{}); }catch(e){} }, m.sound !== 'off' ? 1800 : 0);
+    }
   }
+}
+let MSG_DONE = (()=>{ try{ return localStorage.getItem('msgDone') || ''; }catch(e){ return ''; } })();
+// a sound to suit the message: a bell for an alert, three short beeps for a warning, a rising chord for
+// congratulations, a ding-dong for an announcement, a soft two-note for the rest
+const MSG_TONES = {
+  info: [[784, 0], [1046.5, .22]],
+  alert: [[880, 0], [1318.5, .38], [1760, .76]],
+  welcome: [[659.3, 0], [784, .18], [987.8, .36]],
+  urgent: [[987.8, 0, 'square'], [987.8, .3, 'square'], [987.8, .6, 'square'], [1318.5, .9, 'square']],
+  reminder: [[1046.5, 0], [784, .3], [1046.5, .6]],
+  congrats: [[523.3, 0], [659.3, .13], [784, .26], [1046.5, .39], [1318.5, .52]],
+  announcement: [[784, 0], [622.3, .5]],
+  thanks: [[698.5, 0], [880, .25], [1046.5, .5]],
+};
+function messageTone(kind){
+  const A = actx(); if(!A) return;
+  (MSG_TONES[kind] || MSG_TONES.info).forEach(([f, at, type]) => {
+    const o = A.createOscillator(), g = A.createGain(), t = A.currentTime + .05 + at, sq = type === 'square';
+    o.type = type || 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(sq ? .08 : .24, t + .02); g.gain.exponentialRampToValueAtTime(.001, t + (sq ? .25 : 1.2));
+    o.connect(g); g.connect(A.destination); o.start(t); o.stop(t + 1.3);
+  });
 }
 // «مهامي»: the open tasks, the late ones first and marked
 function todaysReminders(){
@@ -2534,6 +2614,14 @@ function gameWhen(x, now, withDate){
  const day=IDF(GREG,{timeZone:CONFIG.timezone,weekday:'long'}).format(x.t);
  return withDate ? `${esc(day)} ${esc(IDF(GREG,{timeZone:CONFIG.timezone,day:'numeric',month:'long'}).format(x.t))} - ${fmt12(kh,km)}` : `${esc(day)} · ${fmt12(kh,km)}`;
 }
+// who is ahead: «win» and «lose» once the game is over, «lead» while it is on; nothing for a draw or before kick-off
+function sides(ev, st, scored){
+ if(!scored) return ['', ''];
+ const h=+ev.intHomeScore, a=+ev.intAwayScore;
+ if(h===a) return [' draw', ' draw'];
+ const up=st==='done' ? ' win' : ' lead', down=st==='done' ? ' lose' : ' behind';
+ return h>a ? [up, down] : [down, up];
+}
 const teamCrest=b=>b?`<img src="${esc(b)}/tiny" alt="" onerror="this.style.visibility='hidden'">`:'<span class="ball">⚽</span>';
 const leagueTag=(x,ev)=>{ const logo=leagueLogo(ev); return `${logo?`<img src="${esc(logo)}" alt="" onerror="this.remove()">`:'<span>🏆</span>'}<span>${esc(x.lg || ev.strLeague || '')}</span>`; };
 // today's game in the bottom panel, in the same four rows as the occasions and the series beside it:
@@ -2541,22 +2629,25 @@ const leagueTag=(x,ev)=>{ const logo=leagueLogo(ev); return `${logo?`<img src="$
 function todaySlot(x, now){
  const ev=x.ev, st=gameState(x,now), scored=ev.intHomeScore!=null && ev.intAwayScore!=null && (st==='live' || st==='done');
  const left=x.t-now;
- const mid=scored ? `<span class="mb-g">${ar(+ev.intHomeScore)}</span><i>-</i><span class="mb-g">${ar(+ev.intAwayScore)}</span>`
+ const [gh,ga]=sides(ev,st,scored);
+ const mid=scored ? `<span class="mb-g${gh}">${ar(+ev.intHomeScore)}</span><i>-</i><span class="mb-g${ga}">${ar(+ev.intAwayScore)}</span>`
    : st==='next' ? (left>86400000 ? daysLeft(Math.ceil(left/86400000)) : cdn(x.t,'بدأت المباراة')) : '<i>×</i>';
- const nm=(n,id)=>`<b>${esc(shortTeam(teamAr(n,id)))}</b>`;
- return `<div class="mb4 ${st}"><div class="mb-cr">${teamCrest(ev.strHomeTeamBadge)}${teamCrest(ev.strAwayTeamBadge)}</div>`
-  + `<div class="mb-nm">${nm(ev.strHomeTeam,ev.idHomeTeam)}${nm(ev.strAwayTeam,ev.idAwayTeam)}</div>`
+ const [hs,as]=sides(ev,st,scored);
+ const nm=(n,id,c)=>`<b class="${c.trim()}">${esc(shortTeam(teamAr(n,id)))}</b>`;
+ return `<div class="mb4 ${st}"><div class="mb-cr"><span class="${hs.trim()}">${teamCrest(ev.strHomeTeamBadge)}</span><span class="${as.trim()}">${teamCrest(ev.strAwayTeamBadge)}</span></div>`
+  + `<div class="mb-nm">${nm(ev.strHomeTeam,ev.idHomeTeam,hs)}${nm(ev.strAwayTeam,ev.idAwayTeam,as)}</div>`
   + `<div class="mb-sc">${mid}</div><div class="mb-ft"><span class="mb-lg">${leagueTag(x,ev)}</span><span class="mb-st">${gameWhen(x,now,false)}</span></div></div>`;
 }
 // one of the followed teams' games on the card: the competition; the day, the date and the time; then
 // crest | name (goals) × (goals) name | crest
 function fixtureRow(x, now){
  const ev=x.ev, st=gameState(x,now), scored=ev.intHomeScore!=null && ev.intAwayScore!=null && (st==='live' || st==='done');
- const g=v=>`<span class="fx-g">(${scored ? ar(+v) : '–'})</span>`;
+ const [hs,as]=sides(ev,st,scored);
+ const g=(v,c)=>`<span class="fx-g${c}">(${scored ? ar(+v) : '–'})</span>`;
  const mine=id=>CONFIG.teamIds.includes(String(id)) ? ' mine' : '';
  return `<li class="fx ${st}"><div class="fx-lg">${leagueTag(x,ev)}</div><div class="fx-dt">${gameWhen(x,now,true)}</div>`
-  + `<div class="fx-tm"><span class="fx-c">${teamCrest(ev.strHomeTeamBadge)}</span><b class="fx-n h${mine(ev.idHomeTeam)}">${esc(shortTeam(teamAr(ev.strHomeTeam,ev.idHomeTeam)))}</b>${g(ev.intHomeScore)}`
-  + `<i class="fx-x">×</i>${g(ev.intAwayScore)}<b class="fx-n a${mine(ev.idAwayTeam)}">${esc(shortTeam(teamAr(ev.strAwayTeam,ev.idAwayTeam)))}</b><span class="fx-c">${teamCrest(ev.strAwayTeamBadge)}</span></div></li>`;
+  + `<div class="fx-tm"><span class="fx-c${hs}">${teamCrest(ev.strHomeTeamBadge)}</span><b class="fx-n h${mine(ev.idHomeTeam)}${hs}">${esc(shortTeam(teamAr(ev.strHomeTeam,ev.idHomeTeam)))}</b>${g(ev.intHomeScore,hs)}`
+  + `<i class="fx-x">×</i>${g(ev.intAwayScore,as)}<b class="fx-n a${mine(ev.idAwayTeam)}${as}">${esc(shortTeam(teamAr(ev.strAwayTeam,ev.idAwayTeam)))}</b><span class="fx-c${as}">${teamCrest(ev.strAwayTeamBadge)}</span></div></li>`;
 }
 let MATCH_PAGE = 0;
 function matchMinute(ev){

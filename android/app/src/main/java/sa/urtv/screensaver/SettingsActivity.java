@@ -103,9 +103,7 @@ public class SettingsActivity extends Activity {
         header("بجانب الساعة");
         row("المحتوى", Prefs.panelLabel(prefs.panel()), R.drawable.ic_eye, new Runnable() { public void run() { pickPanel(false); } });
 
-        header("الشاشة الرئيسية (تلفزيونك)");
-        row("بطاقة على الشاشة الرئيسية", Prefs.panelLabel(prefs.homePanel()), R.drawable.ic_eye,
-            new Runnable() { public void run() { pickPanel(true); } });
+        header("الشاشة الرئيسية (تلفزيونك)");   // the same screen as the screensaver; Down brings the apps
         row("ترتيب التطبيقات المفضلة", "قائمة ترتّب فيها المفضلة بالأسهم", R.drawable.ic_star,
             new Runnable() { public void run() { openDockSettings(); } });
 
@@ -376,8 +374,14 @@ public class SettingsActivity extends Activity {
         }).start();
     }
 
+    private final android.os.Handler ui = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable followDownload = new Runnable() {   // the row shows «جارٍ تنزيل التحديث · ٤٥٪» as it goes
+        public void run() { render(); if (AppUpdater.status().startsWith("جارٍ")) ui.postDelayed(this, 1000); }
+    };
+
     private void updateApp() {
         toast("جارٍ التحقق من تحديث التطبيق…");
+        ui.postDelayed(followDownload, 1500);
         new Thread(() -> {
             final String msg = AppUpdater.run(getApplicationContext(), true);
             runOnUiThread(() -> { toast(msg); render(); });

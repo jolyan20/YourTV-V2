@@ -1,6 +1,6 @@
 # YourTV V2
 
-آخر نسخة تطوير: **4.10**. راجع [التعديلات وحالة الاختبار والقيود](V2-NOTES.md) قبل التثبيت.
+آخر نسخة تطوير: **4.11**. راجع [التعديلات وحالة الاختبار والقيود](V2-NOTES.md) قبل التثبيت.
 
 نسخة تطوير بتوزيع موحد للشاشة الرئيسية وشاشة التوقف مع الحفاظ على التحكم بالجوال.
 
@@ -9,7 +9,7 @@
 > (بالأيام، وفي آخر يوم عدّ تنازلي بالثواني ثم التهنئة)؛ بطاقة جنب الساعة تتبدل كل ١٠ ثوانٍ (آية، حديث، الطقس، المباريات)؛
 > وصور إضافية من [منصة الصور السعودية](https://cc.spa.gov.sa) (واس، CC BY-SA 4.0) مع وصف كل صورة. التحديث التلقائي من هذا المستودع.
 
-<p align="center"><img src=".github/brand/hero.png" alt="تلفزيونك · UrTV" width="100%"></p>
+<p align="center"><img src=".github/brand/hero.png" alt="YourTV V2" width="100%"></p>
 
 <h1 align="center">تلفزيونك · UrTV</h1>
 
@@ -17,8 +17,8 @@
 
 <p align="center">An Arabic home screen and a Saudi screensaver for Android TV / Google TV, and a safe speed-up.<br>Your AI agent sets it all up.</p>
 
-<p align="center"><img src=".github/screens/before-after-home.jpg" alt="Before: Google TV home. After: the تلفزيونك home screen" width="100%"></p>
-<p align="center"><img src=".github/screens/before-after-screensaver.jpg" alt="Before: the Google screensaver. After: شاشة تلفزيونك" width="100%"></p>
+<p align="center"><img src=".github/screens/screen-day.jpg" alt="شاشة YourTV V2: مباريات فرقك، الصلاة والطقس، التاريخ، ساعة مكة، نجوم الأطفال، ومربعات المناسبات والأفلام والمباريات" width="100%"></p>
+<p align="center"><img src=".github/screens/screen-adhan.jpg" alt="وقت الأذان: ساعة مكة تضيء وتطلق أشعتها، وبطاقة المهام والتذكيرات بساعتها الرملية" width="100%"></p>
 
 <div dir="rtl">
 

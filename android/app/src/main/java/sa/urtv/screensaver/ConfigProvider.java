@@ -8,7 +8,8 @@ import android.net.Uri;
 
 /**
  * Read-only: hands the launcher (same signing key, see READ_CONFIG in the manifest) what its home-screen
- * card needs: the page settings as a URL fragment and which card to show ("none" = off).
+ * card needs: the page settings as a URL fragment and which card to show ("none" = off), and (content://…/page)
+ * the screen page as this app last updated it (Updater), so the home screen shows the same page.
  */
 public class ConfigProvider extends ContentProvider {
     @Override public boolean onCreate() { return true; }
@@ -19,6 +20,13 @@ public class ConfigProvider extends ContentProvider {
         MatrixCursor c = new MatrixCursor(new String[] {"fragment", "home_panel"});
         c.addRow(new Object[] {p.fragment(), p.homePanel()});
         return c;
+    }
+
+    @Override
+    public android.os.ParcelFileDescriptor openFile(Uri uri, String mode) throws java.io.FileNotFoundException {
+        java.io.File f = Updater.pageFile(getContext());
+        if (!"/page".equals(uri.getPath()) || !f.isFile()) throw new java.io.FileNotFoundException("page");
+        return android.os.ParcelFileDescriptor.open(f, android.os.ParcelFileDescriptor.MODE_READ_ONLY);
     }
 
     @Override public String getType(Uri uri) { return null; }

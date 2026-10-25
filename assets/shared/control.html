@@ -133,6 +133,16 @@
         <div><label>تبقى</label>
           <input id="msg-dur" type="number" min="1" max="1440" value="5" step="1" aria-label="مدة العرض بالدقائق"><small>مدة العرض بالدقائق · الافتراضي 5 دقائق</small></div>
       </div>
+      <div class="row">
+        <div><label>صوت التنبيه</label>
+          <select id="msg-sound"><option value="auto">🔔 يناسب نوع الرسالة</option><option value="off">🔕 بدون صوت</option></select></div>
+        <div><label>مقطع يوتيوب (اختياري)</label>
+          <input id="msg-clip" inputmode="url" placeholder="الصق رابط المقطع"><small>يشتغل في نافذة على الشاشة بعد صوت التنبيه</small></div>
+      </div>
+      <div class="row">
+        <div><label>يبدأ من الثانية</label><input id="msg-clip-from" type="number" min="0" step="1" placeholder="من الرابط أو ٠"></div>
+        <div><label>مدة المقطع (ثانية)</label><input id="msg-clip-len" type="number" min="5" max="3600" step="5" value="120"></div>
+      </div>
       <button class="main" onclick="sendMessage()">إرسال للشاشة</button>
       <button class="ghost" style="width:100%;margin-top:8px" onclick="clearMessage()">مسح الرسالة</button>
     </div>
@@ -424,7 +434,14 @@ const t12 = hm => { const [h, m] = String(hm).split(':').map(Number); return (h 
 
 async function appUpdate(now){
   $('app-update').textContent = 'جارٍ التحقق…';
-  try{ $('app-update').textContent = (await api('/api/appupdate', now ? {} : undefined)).status; }
+  try{
+    $('app-update').textContent = (await api('/api/appupdate', now ? {} : undefined)).status;
+    // follow the download on the TV: «جارٍ تنزيل التحديث · ٤٥٪», until it is done
+    if(now){ clearInterval(appUpdate.t); appUpdate.t = setInterval(async () => {
+      try{ const st = (await api('/api/appupdate')).status; $('app-update').textContent = st; if(!/^جارٍ/.test(st)) clearInterval(appUpdate.t); }
+      catch(e){ clearInterval(appUpdate.t); }
+    }, 1500); }
+  }
   catch(e){ $('app-update').textContent = 'تعذر الوصول للتلفزيون'; }
 }
 // the screen reads the test within 10 s (it asks this TV for the settings that often)
@@ -757,7 +774,25 @@ function sendMessage(){
   const text = $('msg-text').value.trim(); if(!text) return toast('اكتب الرسالة', true);
   const mins = +$('msg-dur').value;
   if(!Number.isInteger(mins)||mins<1||mins>1440)return toast('أدخل مدة من دقيقة إلى 1440 دقيقة',true);
-  save('message', {text, sender:$('msg-sender').value.trim() || 'النظام', style: $('msg-style').value, until: Date.now() + mins*60000, at: Date.now()});
+  const link = $('msg-clip').value.trim(), clip = link ? youtubeClip(link) : null;
+  if(link && !clip) return toast('رابط يوتيوب غير صحيح', true);
+  if(clip){
+    const from = $('msg-clip-from').value;
+    if(from !== '') clip.start = Math.max(0, Math.round(+from || 0));
+    clip.end = clip.start + Math.max(5, Math.min(3600, Math.round(+$('msg-clip-len').value || 120)));
+  }
+  save('message', {text, sender:$('msg-sender').value.trim() || 'النظام', style: $('msg-style').value, sound: $('msg-sound').value,
+    ...(clip ? {clip} : {}), until: Date.now() + mins*60000, at: Date.now()});
+}
+// youtu.be/ID, youtube.com/watch?v=ID, /shorts/ID, /live/ID or /embed/ID, with its t= start (90, 1m30s)
+function youtubeClip(link){
+  let u; try{ u = new URL(/^https?:/i.test(link) ? link : 'https://' + link); }catch(e){ return null; }
+  const host = u.hostname.replace(/^(www|m|music)\./, '');
+  let id = host === 'youtu.be' ? u.pathname.slice(1) : host === 'youtube.com' ? (u.searchParams.get('v') || (u.pathname.match(/^\/(?:shorts|live|embed)\/([^/?#]+)/) || [])[1]) : null;
+  if(!id || !/^[A-Za-z0-9_-]{11}$/.test(id)) return null;
+  const t = u.searchParams.get('t') || u.searchParams.get('start') || '', m = String(t).match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/);
+  const start = m ? (+m[1] || 0) * 3600 + (+m[2] || 0) * 60 + (+m[3] || 0) : 0;
+  return {id, start};
 }
 function clearMessage(){ save('message', {text: '', until: 0, at: Date.now()}); }
 function addTask(){

@@ -17,6 +17,7 @@ public class MainActivity extends Activity {
     private WebView web;
     private QuranWindow quran;
     private FrameLayout root;
+    static volatile boolean up = false;   // the screen is open (ControlServer: a message's clip plays here)
 
     private final SharedPreferences.OnSharedPreferenceChangeListener follow = (p, key) -> {
         if (ControlStore.KEY_QURAN.equals(key) && quran != null && quran.isOn() != ControlStore.quran(this)) quran.toggle();
@@ -47,9 +48,19 @@ public class MainActivity extends Activity {
         morning(i);
     }
 
-    /** opened by the morning alarm: the screen on, and the adhkar in the window (up to 30 minutes) */
+    @Override protected void onResume() { super.onResume(); up = true; }
+    @Override protected void onPause() { up = false; super.onPause(); }
+
+    /** opened by the morning alarm: the screen on, and the adhkar in the window (up to 30 minutes);
+     *  or for a message's YouTube clip: the clip in the window */
     @SuppressWarnings("deprecation")
     private void morning(android.content.Intent i) {
+        String clip = i == null ? null : i.getStringExtra("clip");
+        if (clip != null) {
+            final int start = i.getIntExtra("start", 0), end = i.getIntExtra("end", 240);
+            root.postDelayed(() -> { if (quran != null) quran.playVideo(clip, start, end, null); }, 2500);
+            return;
+        }
         String video = i == null ? null : i.getStringExtra("alarmVideo");
         if (video == null) return;
         if (android.os.Build.VERSION.SDK_INT >= 27) setTurnScreenOn(true);

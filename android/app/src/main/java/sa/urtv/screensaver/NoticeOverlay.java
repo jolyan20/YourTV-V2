@@ -68,6 +68,7 @@ final class NoticeOverlay {
             if (until > now && !shown.contains(key)) {
                 String[] kind = kind(m.optString("style"));
                 show(key, kind[0], kind[1], m.optString("text"), m.optString("sender", "النظام"), until);
+                if (!"off".equals(m.optString("sound"))) beep("urgent".equals(m.optString("style")));
                 return;
             }
         }
@@ -85,6 +86,7 @@ final class NoticeOverlay {
             String key = "r" + r.optString("id") + today;
             if (mins >= at && mins < at + 3 && !shown.contains(key)) {
                 show(key, "⏰", "تذكير", r.optString("text"), time12(at), now + SHOW_MS);
+                beep(false);
                 return;
             }
         }
@@ -130,6 +132,15 @@ final class NoticeOverlay {
         try { wm.addView(b, lp); } catch (Exception e) { return; }
         box = b; boxKey = key; boxUntil = until;
         handler.postDelayed(() -> { if (box == b && System.currentTimeMillis() >= boxUntil) hide(); }, Math.max(1000, until - System.currentTimeMillis()));
+    }
+
+    /** a short tone with the notice (three for a warning), on the notification stream */
+    private void beep(boolean urgent) {
+        try {
+            final android.media.ToneGenerator t = new android.media.ToneGenerator(android.media.AudioManager.STREAM_NOTIFICATION, 70);
+            t.startTone(urgent ? android.media.ToneGenerator.TONE_PROP_BEEP2 : android.media.ToneGenerator.TONE_PROP_ACK, urgent ? 900 : 400);
+            handler.postDelayed(t::release, 1500);
+        } catch (Exception ignored) { }
     }
 
     private void hide() {
