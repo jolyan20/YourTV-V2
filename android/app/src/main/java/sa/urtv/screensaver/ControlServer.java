@@ -25,7 +25,7 @@ import java.util.concurrent.Semaphore;
  *   GET  /api/state      everything                         } with the session key
  *   POST /api/save       {"section": "...", "value": ...}   } in the X-Key header
  *   POST /api/quran      {"on": true|false}                 }
- *   POST /api/test       {"what": "adhan"|"kickoff"|...}    }
+ *   POST /api/test       {"what": "adhan"|"kickoff"|...|"stop"} } on every TV (passed on: GET /api/peer, sync key)
  * Wrong PINs: 5 from one address locks that address for 15 minutes; 20 in an hour from anywhere locks
  * logins for an hour. No cross-site access (CORS only for /api/public on this TV), strict security headers.
  */
@@ -198,6 +198,13 @@ final class ControlServer implements Runnable {
                 if (f == null) { reply(s, 404, "text/plain", "none", false); return; }
                 replyBytes(s, Uploads.type(app, name), f); return;
             }
+            if ("GET".equals(method) && "/api/peer".equals(path)) {   // another TV passing on a test, the Quran or "take it now"
+                if (!ControlSync.keyMatches(app, get(h, "x-sync", ""))) { failed(who); reply(s, 401, "text/plain", "sync", false); return; }
+                if (query.startsWith("test=")) runTest(query.substring(5));
+                else if (query.startsWith("quran=")) ControlStore.setQuran(app, query.endsWith("1"));
+                else if (query.startsWith("pull=")) new Thread(() -> ControlSync.pull(app)).start();
+                reply(s, 200, "application/json", "{\"ok\":true}", false); return;
+            }
             if ("GET".equals(method) && "/api/sync".equals(path)) {   // the household's other TV (ControlSync), its own key
                 if (!ControlSync.keyMatches(app, get(h, "x-sync", ""))) { failed(who); reply(s, 401, "text/plain", "sync", false); return; }
                 reply(s, 200, "application/json; charset=utf-8", ControlSync.state(app).toString(), false); return;
@@ -255,16 +262,13 @@ final class ControlServer implements Runnable {
                 JSONObject o = new JSONObject(new String(body, StandardCharsets.UTF_8));
                 if ("/api/quran".equals(path)) {
                     ControlStore.setQuran(app, o.optBoolean("on"));
+                    ControlSync.tell(app, "quran=" + (o.optBoolean("on") ? 1 : 0));   // the household's other TVs too
                     reply(s, 200, "application/json", "{\"ok\":true}", false); return;
                 }
-                if ("/api/test".equals(path)) {   // «تجربة الميزات» on the phone: the same tests as SaverReceiver TEST
+                if ("/api/test".equals(path)) {   // «تجربة الميزات» on the phone: on every TV of the household
                     String what = o.optString("what");
-                    if (!what.matches("whistle|chime|soft|kickoff|hour|adhan|weather|friday|series|overlay")) {
-                        reply(s, 400, "application/json", "{\"error\":\"what\"}", false); return;
-                    }
-                    if ("overlay".equals(what)) new WeatherWatch(app).test();   // the notice over other apps
-                    else ControlStore.prefs(app).edit().putString("selftest", new JSONObject().put("what", what)
-                        .put("at", System.currentTimeMillis()).toString()).apply();
+                    if (!runTest(what)) { reply(s, 400, "application/json", "{\"error\":\"what\"}", false); return; }
+                    ControlSync.tell(app, "test=" + what);
                     reply(s, 200, "application/json", "{\"ok\":true}", false); return;
                 }
                 if ("/api/save".equals(path)) {
@@ -276,6 +280,7 @@ final class ControlServer implements Runnable {
                         reply(s, 400, "application/json", "{\"error\":\"section\"}", false); return;
                     }
                     ControlStore.save(app, section, v.toString());
+                    ControlSync.tell(app, "pull=1");   // the other TVs take it now, not at their next minute
                     reply(s, 200, "application/json", "{\"ok\":true}", false); return;
                 }
             }
@@ -283,6 +288,17 @@ final class ControlServer implements Runnable {
         } catch (Exception e) {
             try { reply(s, 400, "text/plain", "bad request", false); } catch (Exception ignored) { }
         }
+    }
+
+    /** a test from the phone (or passed on by another TV): what waits for its moment, now; "stop" ends them */
+    private boolean runTest(String what) {
+        if (!what.matches("whistle|chime|soft|kickoff|hour|adhan|weather|friday|series|overlay|stop")) return false;
+        if ("overlay".equals(what)) { new WeatherWatch(app).test(); return true; }   // the notice over other apps
+        try {
+            ControlStore.prefs(app).edit().putString("selftest", new JSONObject().put("what", what)
+                .put("at", System.currentTimeMillis()).toString()).apply();
+        } catch (Exception ignored) { }
+        return true;
     }
 
     /** on: remember the TV's volume and set the adhan's (display.adhanVolume, 0..100, default 20); off: put it back */

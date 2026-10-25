@@ -14,14 +14,15 @@ import java.security.MessageDigest;
 
 /**
  * The household's TVs share one set of data: tasks, reminders, family occasions, the screens, the wird, my series,
- * bedtime, sleep hours, the screen options, and the followed teams. Every minute each TV asks the others
- * (home network or Tailscale, set once from the computer: SaverReceiver SYNC) for what they hold, and keeps
- * whichever copy of each part was changed last. The message on the screen, game time and the city stay with each
- * TV. An item or the screen options can still be for one TV only: it carries that TV's id (ControlStore.me).
+ * bedtime, sleep hours, the screen options, the message on the screen, guest mode and the followed teams. Every
+ * minute each TV asks the others (home network or Tailscale, set once from the computer: SaverReceiver SYNC) for
+ * what they hold, and keeps whichever copy of each part was changed last; a save on one TV also tells the others to
+ * ask now, and a test or the Quran stream from the phone is passed on at once (tell). Game time and the city stay
+ * with each TV. An item or the screen options can still be for one TV only: it carries that TV's id (ControlStore.me).
  * The TVs prove themselves to each other with a shared random key; the phone's PIN is not involved.
  */
 final class ControlSync {
-    static final String[] SECTIONS = {"tasks", "reminders", "family", "sleep", "display", "series", "bedtime", "wird", "screens", "tmdb"};
+    static final String[] SECTIONS = {"tasks", "reminders", "family", "sleep", "display", "series", "bedtime", "wird", "screens", "tmdb", "message", "guest"};
 
     private ControlSync() {}
 
@@ -80,6 +81,20 @@ final class ControlSync {
                 return;   // one TV that answered is enough
             } catch (Exception ignored) { }   // that TV is off or away: try the next
         }
+    }
+
+    /** pass something on to the other TVs at once (off this thread): "test=adhan", "quran=1", "pull=1" (take it now) */
+    static void tell(Context c, String what) {
+        String key = ControlStore.prefs(c).getString("syncKey", ""), peers = ControlStore.prefs(c).getString("syncPeers", "");
+        if (key.length() < 32 || peers.isEmpty() || !what.matches("[a-z]+=[a-z0-9]+")) return;
+        new Thread(() -> {
+            for (String peer : peers.split(",")) {
+                peer = peer.trim();
+                if (!peer.matches("[0-9.]{7,15}")) continue;
+                try { fetch(peer, key, "/api/peer?" + what); return; }   // one address of that TV that answered is enough
+                catch (Exception ignored) { }
+            }
+        }).start();
     }
 
     /** a plain GET over a socket (the app allows no other clear-text connections), home network or Tailscale only */

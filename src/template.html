@@ -694,8 +694,9 @@ html:not(.widget) .clockwrap{grid-column:10/13;padding:0;overflow:hidden;justify
 .watch-time{display:flex;flex-direction:column;align-items:center;line-height:1.15;flex:none}
 html:not(.widget) .watch-time .clock{position:static;display:flex;align-items:baseline;justify-content:center;direction:ltr;font-size:1em;
   color:#F3E2B0;text-shadow:0 1px 3px rgba(0,0,0,.75);letter-spacing:0;opacity:1}
-.watch-time .clock .d i{font-style:normal}.watch-time .clock .sep{padding:0 .06em}
-.watch-time .clock .ampm{font-size:.62em;margin-left:.3em;color:#D9B65E}
+.watch-time .clock .d i{font-style:normal}
+html:not(.widget) .watch-time .clock .sep{display:inline;font-size:1em;padding:0 .04em;margin:0;opacity:1;color:inherit;transform:none;animation:none}
+.watch-time .clock .ampm{font-size:.8em;margin-left:.04em;color:#D9B65E}
 .watch-time .w24{font-size:.66em;color:#C9D0C7;direction:ltr;text-shadow:0 1px 3px rgba(0,0,0,.75)}
 .bottom .occasion-content,.v2-show{grid-template-rows:minmax(0,1fr) 3.6vh 4.6vh 5.6vh}
 .v2-show{grid-template-columns:minmax(0,1fr);gap:.3vh;padding:0 .4vw}
@@ -730,7 +731,6 @@ html:not(.widget) #v2-series{flex:1 1 0;height:auto;min-height:0}
       <div class="hijri" id="hijri">—</div>
       <div class="greg" id="greg">—</div>
       <div class="shamsi" id="shamsi">—</div>
-      <div class="t24"><b id="ck-24"></b></div>
       <div class="rule"></div>
     </div>
 
@@ -901,13 +901,13 @@ function tickClock(){
   const key = h12 + ':' + p.mi;
   if(key === tickClock.last) return;   // ticks every second, redraws once a minute
   tickClock.last = key;
-  document.getElementById('ck-h').innerHTML = digits(ar(h12));
-  document.getElementById('ck-m').innerHTML = digits(ar(pad(p.mi)));
+  document.getElementById('ck-h').innerHTML = digits(pad(h12));     // as the household writes it: 02:30م
+  document.getElementById('ck-m').innerHTML = digits(pad(p.mi));
   document.getElementById('ck-ap').textContent = p.h < 12 ? 'ص' : 'م';
   const h24 = document.getElementById('ck-24');
   if(h24) h24.textContent = ar(pad(p.h)) + ':' + ar(pad(p.mi));
   const w24 = document.getElementById('w-24');
-  if(w24) w24.textContent = ar(pad(p.h)) + ':' + ar(pad(p.mi));
+  if(w24) w24.textContent = pad(p.h) + ':' + pad(p.mi);
   const face = document.querySelector('.clock-face');
   if(face && DAY_TIMES) watchLight(face, p.h * 60 + p.mi, DAY_TIMES);
   const dw = document.getElementById('v2-date');
@@ -1333,7 +1333,7 @@ const ADHAN_VIDEO = {
   main: 'tJPNo41mOjg',   // Sheikh Ali Mulla (بروق المباسم من نداءات المواسم), picked by the household
   fajr: 'tJPNo41mOjg',   // the same, for Fajr too (the household's choice)
 };
-let ADHAN_DONE = '', ADHAN_FINISHED = '', ADHAN_ACTIVE = false;
+let ADHAN_DONE = '', ADHAN_FINISHED = '', ADHAN_ACTIVE = false, ADHAN_STOP = null;
 function adhanMode(fajr){
   const d = DISP(), ok = m => ['full', 'takbir', 'off'].includes(m) ? m : null;
   if(d.adhanSound === false) return 'off';                        // older phone pages
@@ -1352,6 +1352,7 @@ function playAdhan(cur){
   let media=null, timer=null, finished=false;
   const stopMedia=()=>{clearTimeout(timer);if(media){media.onended=null;media.onerror=null;media.onplaying=null;media.onwaiting=null;media.ontimeupdate=null;media.pause();media.removeAttribute('src');media.load();media=null;}};
   const finish=()=>{if(finished)return;finished=true;stopMedia();adhanVolume(false);ADHAN_ACTIVE=false;ADHAN_FINISHED=key;week.classList.remove('adhan-playing');host.classList.remove('on');host.replaceChildren();host.__h=null;renderPanel(false);};
+  ADHAN_STOP=finish;   // «إيقاف الاختبار» on the phone
   const start=(name,isVideo)=>{
     stopMedia();
     if(!name){finish();return;}
@@ -1991,6 +1992,13 @@ function runSelfTest(what){
   else if(what === 'hour') tryEv(fake(59.5 * 60000), 60000);
   else if(what === 'adhan'){
     if(!ADHAN_ACTIVE){ADHAN_DONE='';playAdhan({key:'Test',name:'تجربة الأذان'});}
+  }
+  else if(what === 'stop'){   // «إيقاف الاختبار»: whatever a test started, ended now
+    if(ADHAN_ACTIVE && ADHAN_STOP) ADHAN_STOP();
+    TEAM_FIX = TEAM_FIX.filter(e => !/^selftest/.test(e.idEvent)); matchMoments();
+    DUST_PM = 0; TEST_SERIES = []; delete SERIES.test1;
+    fetch('http://127.0.0.1:8766/api/autoquran', {method: 'POST', body: JSON.stringify({on: false})}).catch(() => {});
+    renderAlerts();
   }
   else if(what === 'weather'){ DUST_PM = 450; renderAlerts(); setTimeout(() => { DUST_PM = 0; renderAlerts(); }, 60000); }
   else if(what === 'friday'){

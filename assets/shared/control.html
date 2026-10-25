@@ -250,7 +250,7 @@
     </div>
     <div class="card">
       <h2>🧪 تجربة الميزات</h2>
-      <p class="muted">كل زر يشغّل الميزة على التلفزيون الآن بدون انتظار وقتها، بالإعدادات المحفوظة (احفظ أي تغيير أولاً). التنبيهات التجريبية تختفي بعد دقيقة.</p>
+      <p class="muted">كل زر يشغّل الميزة الآن على كل التلفزيونات بدون انتظار وقتها، بالإعدادات المحفوظة (احفظ أي تغيير أولاً). التنبيهات التجريبية تختفي بعد دقيقة، و«إيقاف الاختبار» يوقفها كلها فوراً.</p>
       <div class="tests">
         <button class="ghost" onclick="runTest('adhan')">🕌 الأذان</button>
         <button class="ghost" onclick="runTest('kickoff')">⚽ بداية مباراة فريقك</button>
@@ -263,6 +263,7 @@
         <button class="ghost" onclick="runTest('friday')">🕋 بث الحرم (٤٥ ثانية)</button>
         <button class="ghost" onclick="runTest('series')">🎬 حلقة مسلسل جديدة</button>
       </div>
+      <button class="ghost danger" style="width:100%;margin-top:8px" onclick="runTest('stop')">⏹ إيقاف الاختبار</button>
       <p id="test-status" class="muted"></p>
     </div>
     <div class="card">
@@ -428,7 +429,7 @@ async function appUpdate(now){
 }
 // the screen reads the test within 10 s (it asks this TV for the settings that often)
 async function runTest(what){
-  $('test-status').textContent = 'أُرسلت، تظهر على الشاشة خلال ١٠ ثوانٍ…';
+  $('test-status').textContent = what === 'stop' ? 'يتوقف على الشاشات خلال ١٠ ثوانٍ…' : 'أُرسلت، تظهر على الشاشات خلال ١٠ ثوانٍ…';
   try{ await api('/api/test', {what}); }
   catch(e){ $('test-status').textContent = 'تعذر الوصول للتلفزيون'; }
 }
