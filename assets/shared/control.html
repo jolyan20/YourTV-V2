@@ -277,6 +277,22 @@
       <p id="test-status" class="muted"></p>
     </div>
     <div class="card">
+      <h2>📥 استيراد من تلفزيون ثاني</h2>
+      <p class="muted">بعد تثبيت التطبيق من جديد: يسحب هذا التلفزيون كل البيانات من تلفزيون ثاني في البيت (المهام والتذكيرات والمناسبات والشاشات والنجوم والمسلسلات والإعدادات والمدينة والفرق). وإذا كان الثاني محدّث بعد، ينربطون للمزامنة.</p>
+      <button class="ghost" onclick="findTvs()">🔍 ابحث عن التلفزيونات</button>
+      <div class="chips" id="imp-found"></div>
+      <div class="row">
+        <div><label>عنوان التلفزيون الثاني</label><input id="imp-host" inputmode="decimal" placeholder="192.168.1.20"></div>
+        <div><label>رمزه السري</label><input id="imp-pin" inputmode="numeric" placeholder="الرمز اللي في إعداداته"></div>
+      </div>
+      <div class="row">
+        <div><label>اسم هذا التلفزيون</label><input id="imp-me" maxlength="30" placeholder="TCL"></div>
+        <div><label>اسم التلفزيون الثاني</label><input id="imp-other" maxlength="30" placeholder="Haier"></div>
+      </div>
+      <button class="main" onclick="importTv()">استورد البيانات</button>
+      <p id="imp-status" class="muted"></p>
+    </div>
+    <div class="card">
       <h2>⬇️ تحديث التطبيق</h2>
       <p class="muted">ينزّل التلفزيون آخر نسخة بنفسه، وبعدها اضغط «تثبيت» على الشاشة بالريموت.</p>
       <p id="app-update" class="muted"></p>
@@ -432,6 +448,32 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
 const t12 = hm => { const [h, m] = String(hm).split(':').map(Number); return (h % 12 || 12) + ':' + String(m).padStart(2,'0') + (h < 12 ? ' ص' : ' م'); };
 
+async function findTvs(){
+  $('imp-status').textContent = 'جارٍ البحث في شبكة البيت… (حتى ٢٥ ثانية)'; $('imp-found').innerHTML = '';
+  try{
+    const tvs = (await (await fetch('/api/import', {headers: {'X-Device': 'local', 'X-Key': KEY}})).json()).tvs || [];   // this TV searches, never relayed
+    $('imp-found').innerHTML = tvs.map(t => `<button class="chip" onclick="$('imp-host').value='${esc(t.host)}'">📺 ${esc(t.host)}</button>`).join('');
+    $('imp-status').textContent = tvs.length ? 'اختر التلفزيون الثاني، واكتب رمزه السري' : 'ما لقيت تلفزيون ثاني. تأكد إنه شغّال على نفس الواي فاي، أو اكتب عنوانه';
+    if(tvs.length === 1) $('imp-host').value = tvs[0].host;
+  }catch(e){ $('imp-status').textContent = 'تعذر البحث'; }
+}
+const IMPORT_NAMES = {tasks:'المهام', reminders:'التذكيرات', family:'المناسبات', sleep:'ساعات النوم', display:'إعدادات الشاشة', series:'المسلسلات',
+  bedtime:'وقت النوم', wird:'الورد', screens:'الشاشات والنجوم', alarm:'المنبه', tmdb:'حساب الأفلام', prefs:'المدينة والفرق'};
+async function importTv(){
+  const host = $('imp-host').value.trim(), pin = $('imp-pin').value.trim();
+  if(!host || !pin) return toast('اكتب العنوان والرمز السري', true);
+  if(!confirm('تستبدل بيانات هذا التلفزيون ببيانات التلفزيون الثاني؟')) return;
+  $('imp-status').textContent = 'جارٍ الاستيراد…';
+  try{
+    const r = await fetch('/api/import', {method:'POST', headers:{'X-Device': 'local', 'X-Key': KEY, 'Content-Type':'application/json'},
+      body: JSON.stringify({host, pin, myName: $('imp-me').value, otherName: $('imp-other').value})});
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error || 'تعذر الاستيراد');
+    $('imp-status').textContent = 'تم ✔ استوردت: ' + (j.took || []).map(k => IMPORT_NAMES[k] || k).join('، ')
+      + (j.paired ? ' · وانربط التلفزيونين للمزامنة' : ' · الربط للمزامنة بعد ما تحدّث التلفزيون الثاني وتستورد منه هذا');
+    STATE = await api('/api/state'); render();
+  }catch(e){ $('imp-status').textContent = '✖ ' + e.message; }
+}
 async function appUpdate(now){
   $('app-update').textContent = 'جارٍ التحقق…';
   try{

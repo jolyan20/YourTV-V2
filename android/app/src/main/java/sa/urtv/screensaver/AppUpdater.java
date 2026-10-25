@@ -36,6 +36,7 @@ final class AppUpdater {
         try {
             long latest = Long.parseLong(new String(fetch(RELEASE + "version.txt", 64), "UTF-8").trim());
             long mine = versionOf(c, c.getPackageName()), home = versionOf(c, HOME);
+            // the home app missing (removed to take the new key): it is installed with the update
             if (latest <= mine && latest <= home) return status = "التطبيق محدث";
             if (!install) return status = "يوجد تحديث للتطبيق";
             if (Build.VERSION.SDK_INT >= 26 && !c.getPackageManager().canRequestPackageInstalls()) {
@@ -44,9 +45,9 @@ final class AppUpdater {
                 return status = "اسمح للتطبيق بتثبيت التحديثات ثم أعد المحاولة";
             }
             // the home app first: installing this app ends this process
-            boolean both = latest > home && home >= 0 && latest > mine;
+            boolean both = latest > home && latest > mine;
             int parts = both ? 2 : 1;
-            if (latest > home && home >= 0) install(c, "urtv-home.apk", 1, parts);
+            if (latest > home) install(c, "urtv-home.apk", 1, parts);
             if (latest > mine) install(c, "urtv-screensaver.apk", parts, parts);
             UpdateProgress.hide();
             return status = "اضغط «تثبيت» على الشاشة";
@@ -61,7 +62,7 @@ final class AppUpdater {
             PackageInfo p = c.getPackageManager().getPackageInfo(pkg, 0);
             return Build.VERSION.SDK_INT >= 28 ? p.getLongVersionCode() : p.versionCode;
         } catch (PackageManager.NameNotFoundException e) {
-            return -1;   // the home app is not on this TV: nothing to update there
+            return -1;   // not on this TV: the home app is then installed with the update
         }
     }
 

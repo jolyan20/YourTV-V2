@@ -267,6 +267,21 @@ final class ControlServer implements Runnable {
                 reply(s, err == null ? 200 : 400, "application/json", err == null ? "{\"ok\":true}" : "{\"error\":\"" + err + "\"}", false); return;
             }
             if ("/api/logout".equals(path)) { ControlStore.endSession(app, key); reply(s, 200, "application/json", "{\"ok\":true}", false); return; }
+            if ("/api/import".equals(path)) {   // «استيراد من تلفزيون ثاني»: GET finds them, POST takes one's data
+                if ("GET".equals(method)) { reply(s, 200, "application/json", new JSONObject().put("tvs", TvImport.scan(app)).toString(), false); return; }
+                JSONObject o = new JSONObject(new String(body, StandardCharsets.UTF_8));
+                try {
+                    JSONObject r = TvImport.from(app, o.optString("host"), o.optString("pin"), o.optString("myName").trim(), o.optString("otherName").trim());
+                    reply(s, 200, "application/json; charset=utf-8", r.toString(), false);
+                } catch (Exception e) {
+                    reply(s, 400, "application/json; charset=utf-8", new JSONObject().put("error", String.valueOf(e.getMessage())).toString(), false);
+                }
+                return;
+            }
+            if ("/api/pair".equals(path) && "POST".equals(method)) {   // the importing TV hands this one the shared sync key
+                TvImport.pair(app, new JSONObject(new String(body, StandardCharsets.UTF_8)));
+                reply(s, 200, "application/json", "{\"ok\":true}", false); return;
+            }
             if ("/api/appupdate".equals(path)) {   // «تحديث التطبيق» on the phone: download here, «تثبيت» on the TV
                 if ("POST".equals(method)) new Thread(() -> AppUpdater.run(app, true)).start();
                 // while a download runs, its progress («… · ٤٥٪»); else whether there is an update
