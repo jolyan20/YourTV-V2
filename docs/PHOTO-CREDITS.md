@@ -10,7 +10,10 @@ The face of the Makkah Royal Clock, made from three photographs by **King Eliot*
 [Clock 2](https://commons.wikimedia.org/wiki/File:Abraj_al_bait_Clock_2.jpg) and
 [Clock 3](https://commons.wikimedia.org/wiki/File:Abraj_al_bait_Clock_3.jpg).
 Changed: the face straightened to a square, the photographed hands removed by combining the three, the dial
-evened out; `makkah-night.jpg` recolours it as the tower is lit at night. Both images are shared under the same
+evened out; `makkah-night.jpg` recolours it as the tower is lit at night. Since 4.15 the dial inside the gold rim
+is drawn again over its own colour, at 1200 px: the twelve hour marks (pairs of bars measured from the photographs,
+the same all round the dial's fitted centre), the thin gold circle, and the palm and swords of the Kingdom's emblem
+in the photographs' places; the rim and the frame are the photographs'. Both images are shared under the same
 licence, CC BY-SA 4.0.
 
 ## Bundled with the apps (offline fallback)
