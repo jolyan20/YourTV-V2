@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- the apps update themselves from the TV (AppUpdater); Android asks on the screen each time -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- the phone page's server on the home network (ControlService) -->
@@ -112,5 +114,6 @@
             android:exported="true"
             android:readPermission="sa.yourtv.v2.screensaver.READ_CONFIG" />
         <receiver android:name=".MorningAlarm" android:exported="false" />
+        <receiver android:name=".AppUpdater$Done" android:exported="false" />
     </application>
 </manifest>

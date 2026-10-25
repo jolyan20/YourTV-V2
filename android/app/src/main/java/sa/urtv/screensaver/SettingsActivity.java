@@ -6,6 +6,7 @@ import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.graphics.Typeface;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.text.InputType;
@@ -123,6 +124,9 @@ public class SettingsActivity extends Activity {
         row("التحديث التلقائي للصفحة", prefs.autoUpdate() ? "يعمل · كل ٦ ساعات" : "متوقف", R.drawable.ic_sync, new Runnable() { public void run() {
             prefs.setAutoUpdate(!prefs.autoUpdate()); render(); } });
         row("تحقق من التحديث الآن", null, R.drawable.ic_sync, new Runnable() { public void run() { updateNow(); } });
+        row("تحديث التطبيق", AppUpdater.status().isEmpty() ? "ينزّل آخر نسخة ويثبّتها من التلفزيون نفسه" : AppUpdater.status(),
+            R.drawable.ic_sync, new Runnable() { public void run() { updateApp(); } });
+        row("الشاشة الرئيسية عند التشغيل", homeLabel(), R.drawable.ic_screensaver, new Runnable() { public void run() { openHomeSettings(); } });
         row("وقت تشغيل شاشة التوقف", "يفتح إعدادات التلفاز (قد تظهر بالإنجليزية)", R.drawable.ic_screensaver, new Runnable() { public void run() { openDreamSettings(); } });
     }
 
@@ -370,6 +374,30 @@ public class SettingsActivity extends Activity {
             final String msg = Updater.check(getApplicationContext(), true);
             runOnUiThread(() -> toast(msg));
         }).start();
+    }
+
+    private void updateApp() {
+        toast("جارٍ التحقق من تحديث التطبيق…");
+        new Thread(() -> {
+            final String msg = AppUpdater.run(getApplicationContext(), true);
+            runOnUiThread(() -> { toast(msg); render(); });
+        }).start();
+    }
+
+    /** YourTV V2 opens on power-on (ControlService.openScreen), which Android allows once the app may draw over others */
+    private String homeLabel() {
+        if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)) return "اضغط واسمح «بالعرض فوق التطبيقات» ليفتح عند التشغيل";
+        return "يفتح YourTV V2 عند تشغيل التلفاز";
+    }
+
+    private void openHomeSettings() {
+        Intent[] tries = Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)
+            ? new Intent[]{new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:" + getPackageName()))}
+            : new Intent[]{new Intent(Settings.ACTION_HOME_SETTINGS), new Intent(Settings.ACTION_SETTINGS)};
+        for (Intent i : tries) {
+            try { startActivity(i); return; } catch (ActivityNotFoundException ignored) { }
+        }
+        toast("الإعداد غير متاح في هذا التلفاز");
     }
 
     private void openDreamSettings() {

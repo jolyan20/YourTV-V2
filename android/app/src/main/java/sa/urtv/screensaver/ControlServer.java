@@ -124,7 +124,7 @@ final class ControlServer implements Runnable {
             String device=get(h,"x-device","");
             if(!device.isEmpty() && !device.equals("local")) {
                 if(!ControlStore.sessionValid(app,get(h,"x-key",""))) {reply(s,401,"application/json","{}",false);return;}
-                if(!path.matches("/api/(state|prefs|teams|shows|save|upload|quran)(\\?.*)?")) {reply(s,403,"application/json","{}",false);return;}
+                if(!path.matches("/api/(state|prefs|teams|shows|save|upload|quran|appupdate)(\\?.*)?")) {reply(s,403,"application/json","{}",false);return;}
                 relayDevice(s,in,method,path,h,len,device); return;
             }
             byte[] body = new byte[upload ? 0 : len];
@@ -236,6 +236,11 @@ final class ControlServer implements Runnable {
                 reply(s, err == null ? 200 : 400, "application/json", err == null ? "{\"ok\":true}" : "{\"error\":\"" + err + "\"}", false); return;
             }
             if ("/api/logout".equals(path)) { ControlStore.endSession(app, key); reply(s, 200, "application/json", "{\"ok\":true}", false); return; }
+            if ("/api/appupdate".equals(path)) {   // «تحديث التطبيق» on the phone: download here, «تثبيت» on the TV
+                if ("POST".equals(method)) new Thread(() -> AppUpdater.run(app, true)).start();
+                String st = "POST".equals(method) ? "جارٍ التنزيل… اضغط «تثبيت» على الشاشة" : AppUpdater.run(app, false);
+                reply(s, 200, "application/json; charset=utf-8", new JSONObject().put("status", st).toString(), false); return;
+            }
             if ("GET".equals(method) && "/api/state".equals(path)) {
                 reply(s, 200, "application/json; charset=utf-8", ControlStore.state(app).toString(), false); return;
             }

@@ -234,6 +234,13 @@
 <p class="muted">حدد إجازتي جهة الصرف: إذا وقع موعد الراتب داخلهما، يُنقل لأقرب يوم عمل قبل الإجازة أو بعدها (عند التعادل يُقدّم). الموعد الاستثنائي المعلن أدناه له الأولوية.</p><div class="row"><div><label>بداية إجازة الفطر</label><input type="date" id="salary-fitr-from"></div><div><label>نهاية إجازة الفطر</label><input type="date" id="salary-fitr-to"></div></div><div class="row"><div><label>بداية إجازة الأضحى</label><input type="date" id="salary-adha-from"></div><div><label>نهاية إجازة الأضحى</label><input type="date" id="salary-adha-to"></div></div><label>موعد صرف الراتب الاستثنائي حسب الإعلان (اختياري)</label><input type="date" id="salary-date"><p class="muted">الافتراضي يوم 27 ميلادي، الجمعة يُقدّم للخميس والسبت يؤخّر للأحد. أدخل الموعد المعلن عند تغييره في الأعياد.</p>
       <button class="main" onclick="saveDisplay()">حفظ إعدادات الشاشة</button>
     </div>
+    <div class="card">
+      <h2>⬇️ تحديث التطبيق</h2>
+      <p class="muted">ينزّل التلفزيون آخر نسخة بنفسه، وبعدها اضغط «تثبيت» على الشاشة بالريموت.</p>
+      <p id="app-update" class="muted"></p>
+      <button class="ghost" onclick="appUpdate(false)">تحقق</button>
+      <button class="main" onclick="appUpdate(true)">حدّث الآن</button>
+    </div>
   </section>
 
   <section id="s-sleep">
@@ -383,6 +390,11 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
 const t12 = hm => { const [h, m] = String(hm).split(':').map(Number); return (h % 12 || 12) + ':' + String(m).padStart(2,'0') + (h < 12 ? ' ص' : ' م'); };
 
+async function appUpdate(now){
+  $('app-update').textContent = 'جارٍ التحقق…';
+  try{ $('app-update').textContent = (await api('/api/appupdate', now ? {} : undefined)).status; }
+  catch(e){ $('app-update').textContent = 'تعذر الوصول للتلفزيون'; }
+}
 function toast(t, err){ const e = $('toast'); e.textContent = t; e.className = 'toast' + (err ? ' err' : ''); e.style.display = 'block'; clearTimeout(toast.h); toast.h = setTimeout(() => e.style.display = 'none', 2200); }
 async function api(path, body){
   const r = await fetch(path, {method: body ? 'POST' : 'GET', headers: {'X-Device': DEVICE, 'X-Key': KEY, 'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : undefined});
