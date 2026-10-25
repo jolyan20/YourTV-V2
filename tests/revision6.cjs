@@ -15,8 +15,9 @@ t=setup({'adhan-video-main':f},'takbir');t.play();t.tags[0].currentTime=30;t.tag
 t=setup({'adhan-video-main':f},'off');t.play();assert.equal(t.tags.length,0);
 t=setup({});t.play();assert(!t.ctx.ADHAN_ACTIVE);
 const when=src.slice(src.indexOf('function whenText('),src.indexOf('\nfunction seriesSlide'));
-const c={CONFIG:{timezone:'Asia/Riyadh'},GREG:'ar-SA',IDF:(l,o)=>new Intl.DateTimeFormat(l,o),esc:String,ar:String,cdn:()=> 'COUNTDOWN'};vm.createContext(c);vm.runInContext(when,c);
-let now=Date.now();assert(c.whenText({next:{t:now+2*864e5}},now).includes('متبقي 2 يوم'));assert(c.whenText({next:{t:now+1000}},now).includes('COUNTDOWN'));assert(c.whenText({},now).includes('لم يُعلن'));
+const daysSrc=src.slice(src.indexOf('function daysLeft('),src.indexOf('let FAM_CACHE'));
+const c={CONFIG:{timezone:'Asia/Riyadh'},GREG:'ar-SA',IDF:(l,o)=>new Intl.DateTimeFormat(l,o),esc:String,ar:String,cdn:()=> 'COUNTDOWN'};vm.createContext(c);vm.runInContext(when+daysSrc,c);
+let now=Date.now();assert(c.whenText({next:{t:now+2*864e5}},now).includes('<i>يومان</i><i>متبقيان</i>'));assert(c.whenText({next:{t:now+5*864e5}},now).includes('<i>أيام</i><i>متبقية</i>'));assert(c.whenText({next:{t:now+1000}},now).includes('COUNTDOWN'));assert(c.whenText({},now).includes('لم يُعلن'));
 const ctl=fs.readFileSync(require('path').join(__dirname,'../assets/shared/control.html'),'utf8');for(const m of ctl.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))new Function(m[1]);
 console.log('PASS video priority, audio fallback, completion, failures, takbir, off, duplicate prevention; series date/countdown and control syntax');
 

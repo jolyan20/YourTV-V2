@@ -667,6 +667,40 @@ html:not(.widget) .dates{text-align:center}
 .weather-now{grid-column:1;grid-row:1/3;justify-content:center}.weather-condition{grid-column:2;grid-row:1}.weather-current>small{grid-column:2;grid-row:2}.weather-highlow{grid-row:3}
 .bottom .match-team img{height:5.5vh;max-width:5vw}.bottom .match-team{grid-template-rows:3vh 6vh 3vh}
 #credit{bottom:.2vh;font-size:.65vw}
+/* R10: the household's drawing. Left: the card over the alerts row. Right: prayers, weather, then five date
+   boxes beside the watch, then the children's stars. Bottom: occasions, family, films and series, matches,
+   every one in the same rows (logo, name, days left, dates). */
+html:not(.widget) .stage{grid-template-rows:10fr 11fr 30fr 7fr 30fr}
+html:not(.widget) .week{grid-row:1/4}
+html:not(.widget) .alerts{grid-column:1/7;grid-row:4;padding:0 .8vw;border-radius:10px;background:#07181099;border:1px solid #dcb86f33;gap:.6vw}
+html:not(.widget) .alerts:empty{display:flex}
+html:not(.widget) .v2-kids{grid-row:4}
+html:not(.widget) .bottom,html:not(.widget) .bottom.fam{grid-row:5}
+html:not(.widget) .dates{grid-column:7/10;grid-row:3;display:grid;grid-template-rows:repeat(5,minmax(0,1fr));gap:.7vh;justify-content:stretch}
+html:not(.widget) .dates>div:not(.rule){display:flex;align-items:center;gap:.3em;min-width:0;padding:0 .9vw;overflow:hidden;white-space:nowrap;
+  font-size:1.15vw;line-height:1.3;color:var(--sand);background:#07181099;border:1px solid #dcb86f33;border-radius:8px}
+html:not(.widget) .dates #day-name{color:var(--gold);font-weight:500}
+html:not(.widget) .dates .t24 b{direction:ltr;unicode-bidi:isolate;font-family:'ThmanyahDisplay','Thmanyah',serif;font-weight:700;
+  font-size:1.35vw;letter-spacing:.04em;color:#FFF3D6;font-variant-numeric:tabular-nums}
+html:not(.widget) .clockwrap{grid-column:10/13;padding:0}
+.clockwrap .subline{display:none}
+.clock-face{width:auto;height:100%;max-width:100%;aspect-ratio:232/226;border:0;border-radius:0;background:none;box-shadow:none}
+.clock-face>svg{position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 .8vh 1.6vh rgba(0,0,0,.55))}
+.clock-face>svg.watch-hands{filter:none;z-index:3;will-change:transform}
+.clock-face .clock{inset:auto;left:37.93%;width:24.14%;top:55.31%;height:9.73%;z-index:2;font-size:1.9vh;line-height:1;
+  color:#F6E2A6;letter-spacing:0;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+html.night .clock-face .clock{color:#F6E2A6}
+.clock-face .clock .sep{font-size:.85em;transform:translateY(-.06em);padding:0 .04em;color:#F6E2A6}
+.clock-face .clock .ampm{font-size:.6em;align-self:center;margin:0 .3em 0 0;color:#D9B65E}
+.bottom .occasion-content,.v2-show{grid-template-rows:minmax(0,1fr) 3.6vh 4.6vh 5.6vh}
+.v2-show{grid-template-columns:minmax(0,1fr);gap:.3vh;padding:0 .4vw}
+.v2-show .series-poster{grid-column:1;grid-row:1;background:none}
+.v2-show .series-copy>b{grid-column:1;grid-row:2;font-size:1vw;padding:0}
+.v2-show .series-copy .release-left{grid-column:1;grid-row:3;font-size:1vw;gap:.4vw}
+.v2-show .series-copy .release-date{grid-column:1;grid-row:4;font-size:.75vw;border-top:0;padding:0}
+.release-left .num,.bottom .occasion-content .num{font-family:'ThmanyahDisplay','Thmanyah',serif;font-size:1.7vw;line-height:1;color:#FFF3D6}
+.day-unit{display:inline-flex;flex-direction:column;align-items:flex-start;max-width:none;font-size:.62vw;line-height:1.25;color:#E8B07A;font-family:'Thmanyah',sans-serif;font-weight:400}
+.day-unit i{font-style:normal}
 </style>
 </head>
 <body>
@@ -686,6 +720,8 @@ html:not(.widget) .dates{text-align:center}
     <div class="dates"><div id="day-name"></div>
       <div class="hijri" id="hijri">—</div>
       <div class="greg" id="greg">—</div>
+      <div class="shamsi" id="shamsi">—</div>
+      <div class="t24"><b id="ck-24"></b></div>
       <div class="rule"></div>
     </div>
 
@@ -701,11 +737,11 @@ html:not(.widget) .dates{text-align:center}
   <section class="mid">
     <div class="clockwrap">
       <div class="who" id="who"></div>
-      <div class="clock-face" role="img" aria-label="الوقت الحالي"><svg viewBox="0 0 200 200" aria-hidden="true"><path d="M82 40l7 8 11-14 11 14 7-8-4 17H86z" fill="#DCB86F"/><g fill="#DCB86F"><circle cx="100" cy="12" r="3" transform="rotate(0 100 100)"/><circle cx="100" cy="12" r="1.4" transform="rotate(30 100 100)"/><circle cx="100" cy="12" r="1.4" transform="rotate(60 100 100)"/><circle cx="100" cy="12" r="3" transform="rotate(90 100 100)"/><circle cx="100" cy="12" r="1.4" transform="rotate(120 100 100)"/><circle cx="100" cy="12" r="1.4" transform="rotate(150 100 100)"/><circle cx="100" cy="12" r="3" transform="rotate(180 100 100)"/><circle cx="100" cy="12" r="1.4" transform="rotate(210 100 100)"/><circle cx="100" cy="12" r="1.4" transform="rotate(240 100 100)"/><circle cx="100" cy="12" r="3" transform="rotate(270 100 100)"/><circle cx="100" cy="12" r="1.4" transform="rotate(300 100 100)"/><circle cx="100" cy="12" r="1.4" transform="rotate(330 100 100)"/></g><line id="v2-hour" x1="100" y1="100" x2="100" y2="53" stroke="#F6EFE0" stroke-width="6" stroke-linecap="round"/><line id="v2-minute" x1="100" y1="100" x2="100" y2="28" stroke="#DCB86F" stroke-width="4" stroke-linecap="round"/><circle cx="100" cy="100" r="5" fill="#DCB86F"/></svg><div class="clock">
+      <div class="clock-face" role="img" aria-label="الوقت الحالي"><div class="clock">
         <span class="ampm" id="ck-ap">—</span><span class="d" id="ck-h">--</span><span class="sep">:</span><span class="d" id="ck-m">--</span>
       </div>
       </div>
-      <div class="subline"><span class="chip mode" id="mode"></span><span class="chip city" id="clock-sub">بتوقيت الرياض</span><span class="chip h24"><svg viewBox="0 0 24 24" fill="none" stroke="#D6AF6B" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><b id="ck-24"></b></span></div>
+      <div class="subline"><span class="chip mode" id="mode"></span><span class="chip city" id="clock-sub">بتوقيت الرياض</span></div>
     </div>
 
     <div class="week">
@@ -842,8 +878,10 @@ function tickClock(){
   const h12 = p.h % 12 === 0 ? 12 : p.h % 12;
   // one box per digit: browsers ignore letter-spacing on Arabic digits, and ٤ reaches into the next digit
   const digits = s => [...s].map(ch => '<i>' + ch + '</i>').join('');
-  document.getElementById('v2-hour').setAttribute('transform', `rotate(${(p.h % 12)*30 + p.mi*.5} 100 100)`);
-  document.getElementById('v2-minute').setAttribute('transform', `rotate(${p.mi*6} 100 100)`);
+  const turn = (id, deg) => { const el = document.getElementById(id); if(el) el.setAttribute('transform', `rotate(${deg})`); };
+  turn('v2-hour', (p.h % 12)*30 + p.mi*.5 + p.s/120);
+  turn('v2-minute', p.mi*6 + p.s*.1);
+  turn('v2-second', p.s*6);
   const key = h12 + ':' + p.mi;
   if(key === tickClock.last) return;   // ticks every second, redraws once a minute
   tickClock.last = key;
@@ -852,7 +890,78 @@ function tickClock(){
   document.getElementById('ck-ap').textContent = p.h < 12 ? 'ص' : 'م';
   const h24 = document.getElementById('ck-24');
   if(h24) h24.textContent = ar(pad(p.h)) + ':' + ar(pad(p.mi));
+  const dw = document.getElementById('v2-date');
+  if(dw) dw.textContent = ar(p.d);
   applyMode();
+}
+
+// The watch: a two-tone Datejust 36 head without its bracelet (fluted yellow-gold bezel, steel case, mint-green
+// sunburst dial, gold batons, the date at 3 under its lens), drawn once. The hands are their own layer, so the
+// second hand repaints only itself. Centre at 0,0; the 12-hour time sits in a small plaque above the 6.
+const WATCH_BOX = '-116 -113 232 226';
+function watchSVG(){
+  const P = (r, a) => { const t = (a - 90) * Math.PI / 180; return (r * Math.cos(t)).toFixed(2) + ' ' + (r * Math.sin(t)).toFixed(2); };
+  const wedge = (r1, r2, a, b, fill) => `<path d="M${P(r1, a)}L${P(r2, a)}L${P(r2, b)}L${P(r1, b)}Z" fill="${fill}"/>`;
+  let flutes = '', rays = '', track = '', idx = '';
+  for(let i = 0; i < 60; i++) flutes += wedge(80.6, 95.6, i*6, i*6 + 3.2, 'url(#wLit)') + wedge(80.6, 95.6, i*6 + 3, i*6 + 6, 'url(#wShade)');
+  for(let i = 0; i < 90; i++) rays += wedge(0, 77.6, i*4, i*4 + 2, i % 2 ? '#fff' : '#000');
+  for(let i = 0; i < 60; i++) if(i % 5) track += `<path d="M${P(72.6, i*6)}L${P(75.6, i*6)}"/>`;
+  for(let h = 1; h < 12; h++) if(h !== 3) idx += `<g transform="rotate(${h*30})"><rect x="-2.6" y="-66.5" width="5.2" height="14" rx=".7"/><rect x="-.85" y="-65" width="1.7" height="10.6" rx=".85" fill="#F4F1E6" stroke="none"/></g>`;
+  const lug = '<path d="M-68 -68 C-66 -86 -62 -100 -58.5 -108.5 Q-57.5 -111 -54 -111 L-39.5 -111 Q-36.5 -111 -36.5 -108 L-36 -82Z"/><path d="M-60 -104 L-40 -104" stroke="#fff" stroke-opacity=".55" stroke-width=".6" fill="none"/>';
+  const serif = "font-family:'Times New Roman',Georgia,'Noto Serif',serif";
+  return `<svg class="watch" viewBox="${WATCH_BOX}" aria-hidden="true"><defs>
+<linearGradient id="wSteel" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FDFDFD"/><stop offset=".28" stop-color="#C4C6C8"/><stop offset=".5" stop-color="#85888C"/><stop offset=".72" stop-color="#E4E5E6"/><stop offset="1" stop-color="#6E7175"/></linearGradient>
+<linearGradient id="wGold" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8A6624"/><stop offset=".35" stop-color="#F6DC93"/><stop offset=".55" stop-color="#FFF1C2"/><stop offset=".78" stop-color="#D4A94F"/><stop offset="1" stop-color="#7D5A1C"/></linearGradient>
+<linearGradient id="wGoldV" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF1C2"/><stop offset=".5" stop-color="#D4A94F"/><stop offset="1" stop-color="#7D5A1C"/></linearGradient>
+<radialGradient id="wLit" cx="0" cy="0" r="96" gradientUnits="userSpaceOnUse"><stop offset=".84" stop-color="#C99B45"/><stop offset=".9" stop-color="#FBE7A8"/><stop offset=".95" stop-color="#E9C26A"/><stop offset="1" stop-color="#A27A2C"/></radialGradient>
+<radialGradient id="wShade" cx="0" cy="0" r="96" gradientUnits="userSpaceOnUse"><stop offset=".84" stop-color="#7A5A1E"/><stop offset=".9" stop-color="#B98E3E"/><stop offset=".95" stop-color="#94702A"/><stop offset="1" stop-color="#5E4313"/></radialGradient>
+<linearGradient id="wSheen" x1=".1" y1=".05" x2=".9" y2=".95"><stop offset="0" stop-color="#fff" stop-opacity=".5"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".42"/></linearGradient>
+<radialGradient id="wRehaut" cx="0" cy="0" r="80.6" gradientUnits="userSpaceOnUse"><stop offset=".95" stop-color="#6F7A72"/><stop offset=".98" stop-color="#D8DBD6"/><stop offset="1" stop-color="#8E948F"/></radialGradient>
+<radialGradient id="wDial" cx="0" cy="0" r="77.6" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#A3C98F"/><stop offset=".42" stop-color="#76A663"/><stop offset=".82" stop-color="#457A3A"/><stop offset="1" stop-color="#244A20"/></radialGradient>
+<linearGradient id="wLens" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".45"/><stop offset=".5" stop-color="#fff" stop-opacity=".05"/><stop offset="1" stop-color="#fff" stop-opacity=".2"/></linearGradient>
+</defs>
+<g fill="url(#wSteel)" stroke="#4F5357" stroke-width=".5">${lug}<g transform="scale(-1 1)">${lug}</g><g transform="scale(1 -1)">${lug}</g><g transform="scale(-1 -1)">${lug}</g></g>
+<rect x="98" y="-6.5" width="6" height="13" fill="url(#wSteel)" stroke="#4F5357" stroke-width=".4"/>
+<rect x="103" y="-10.5" width="10.5" height="21" rx="2.2" fill="url(#wGoldV)" stroke="#6B4F1D" stroke-width=".45"/>
+<path d="M104 -7.5h9M104 -4.5h9M104 -1.5h9M104 1.5h9M104 4.5h9M104 7.5h9" stroke="#7D5A1C" stroke-width=".55" opacity=".7"/>
+<circle r="100" fill="url(#wSteel)" stroke="#45494D" stroke-width=".7"/>
+<circle r="97.2" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width=".5"/>
+<circle r="96" fill="#7A5A1E"/>${flutes}
+<circle r="88.1" fill="none" stroke="url(#wSheen)" stroke-width="15"/>
+<circle r="95.7" fill="none" stroke="#5E4313" stroke-width=".6"/>
+<circle r="80.6" fill="url(#wRehaut)" stroke="#4A3810" stroke-width=".8"/>
+<circle r="77.6" fill="url(#wDial)"/>
+<g opacity=".045">${rays}</g>
+<circle r="77.6" fill="url(#wSheen)" opacity=".55"/>
+<g stroke="#EFE6CC" stroke-width=".45" opacity=".85">${track}</g>
+<circle r="75.8" fill="none" stroke="#EFE6CC" stroke-width=".3" opacity=".7"/>
+<g fill="url(#wGold)" stroke="#6B4F1D" stroke-width=".35">${idx}
+<path d="M-6.6 -53L-8.3 -60.6L-4.6 -56.5L-4.1 -62.3L-1.6 -56.7L0 -63.5L1.6 -56.7L4.1 -62.3L4.6 -56.5L8.3 -60.6L6.6 -53Z"/>
+<rect x="-6.6" y="-53.2" width="13.2" height="2.6" rx=".7"/>
+<circle cx="-8.3" cy="-61.5" r="1.2"/><circle cx="-4.1" cy="-63.3" r="1.2"/><circle cx="0" cy="-64.6" r="1.25"/><circle cx="4.1" cy="-63.3" r="1.2"/><circle cx="8.3" cy="-61.5" r="1.2"/></g>
+<g fill="#E9C873" text-anchor="middle" style="${serif}">
+<text y="-40.5" font-size="7" font-weight="700" letter-spacing=".6">ROLEX</text>
+<text y="-33.6" font-size="3.3" letter-spacing=".3">OYSTER PERPETUAL</text>
+<text y="-29.1" font-size="3.3" letter-spacing=".3">DATEJUST</text>
+<text y="42.6" font-size="2.6" letter-spacing=".15">SUPERLATIVE CHRONOMETER</text>
+<text y="46.2" font-size="2.6" letter-spacing=".15">OFFICIALLY CERTIFIED</text></g>
+<rect x="-28" y="12" width="56" height="22" rx="3" fill="#0B2410" fill-opacity=".62" stroke="#D9B65E" stroke-width=".55"/>
+<rect x="50" y="-7.6" width="17.6" height="15.2" rx=".8" fill="#FBFAF5" stroke="url(#wGold)" stroke-width="1.1"/>
+<text id="v2-date" x="58.8" y=".4" font-size="11" text-anchor="middle" dominant-baseline="central" fill="#141414" style="font-family:'ThmanyahDisplay','Thmanyah',serif"></text>
+<rect x="46.8" y="-11.2" width="24" height="22.4" rx="4.5" fill="url(#wLens)" stroke="#fff" stroke-opacity=".35" stroke-width=".4"/>
+</svg><svg class="watch-hands" viewBox="${WATCH_BOX}" aria-hidden="true"><defs>
+<linearGradient id="hGold" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9A7428"/><stop offset=".45" stop-color="#FCE7A6"/><stop offset=".6" stop-color="#E4BD62"/><stop offset="1" stop-color="#8A6420"/></linearGradient>
+<filter id="hShadow" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="1.4" dy="2" stdDeviation="1" flood-opacity=".5"/></filter></defs>
+<g filter="url(#hShadow)" stroke="#5E4416" stroke-width=".35">
+<g id="v2-hour"><path d="M-2.9 7L-2.9 -36.5L0 -41.5L2.9 -36.5L2.9 7Z" fill="url(#hGold)"/><rect x="-1.25" y="-35.5" width="2.5" height="24" rx="1.25" fill="#F4F1E6" stroke="none"/></g>
+<g id="v2-minute"><path d="M-2.2 8L-2.2 -62.5L0 -66.5L2.2 -62.5L2.2 8Z" fill="url(#hGold)"/><rect x="-.95" y="-61.5" width="1.9" height="46" rx=".95" fill="#F4F1E6" stroke="none"/></g>
+<g id="v2-second" fill="url(#hGold)"><rect x="-.6" y="-70" width="1.2" height="86" rx=".6"/><circle cy="13.5" r="2.7"/></g>
+<circle r="4.2" fill="url(#hGold)"/><circle r="1.3" fill="#7D5A1C" stroke="none"/></g></svg>`;
+}
+// the 12-hour time fills its plaque on the dial whatever the watch's size
+function fitWatch(){
+  const f = document.querySelector('.clock-face'), c = f && f.querySelector('.clock');
+  if(c && f.clientHeight) c.style.fontSize = (f.clientHeight * .058).toFixed(1) + 'px';
 }
 
 // ---------- day and night: from sunrise to Maghrib is day; the look, the photos and the sign follow ----------
@@ -916,6 +1025,15 @@ function tickDates(){
   document.getElementById('day-name').textContent=IDF(GREG,{timeZone:CONFIG.timezone,weekday:'long'}).format(now);
   try{ document.getElementById('hijri').innerHTML = dateLine('islamic-umalqura', now, false) + ' هـ'; }catch(e){}
   try{ document.getElementById('greg').innerHTML = dateLine('gregory', now, false) + ' م'; }catch(e){}
+  try{ document.getElementById('shamsi').innerHTML = shamsiLine(now); }catch(e){}
+}
+// «٣ العقرب [٨] ١٤٠٥ هـ.ش»: the solar Hijri year (the Persian calendar's arithmetic) with the zodiac month names
+const BURJ = ['الحمل','الثور','الجوزاء','السرطان','الأسد','السنبلة','الميزان','العقرب','القوس','الجدي','الدلو','الحوت'];
+function shamsiLine(now){
+  const p = IDF('en-u-ca-persian',{timeZone: CONFIG.timezone, day:'numeric', month:'numeric', year:'numeric'})
+    .formatToParts(now).reduce((a, x) => (a[x.type] = x.value, a), {});
+  const n = s => +String(s).replace(/[^0-9]/g, ''), m = n(p.month);
+  return `${ar(n(p.day))} ${BURJ[m - 1]} <span class="mchip">${ar(m)}</span> ${ar(n(p.year))} هـ.ش`;
 }
 
 const PRAYER_KEYS = ['Fajr','Dhuhr','Asr','Maghrib','Isha'];
@@ -1176,11 +1294,30 @@ function renderAlerts(){
   if(why.length) out.push(pill('fast', `${mins < maghrib ? 'اليوم' : 'غداً'}: صيام ${why.join('، ')}`));
   if(!GUEST()) out.push(...bedtimeAlerts(now), ...gameAlerts(now), ...wirdAlerts(), ...reminderAlerts(), ...taskAlerts(), ...seriesAlerts(now));
   out.push(...matchAlerts(now), ...weatherAlerts());
-  setHTML(box, out.join(''));
-  // one row: what does not fit waits (the most important ones come first)
-  for(let k = box.children.length; k > 1 && box.scrollWidth > box.clientWidth + 2; k--) box.lastElementChild.remove();
-  box.__h = null;
+  pageAlerts(box, out);
   renderAdhan(mins);
+}
+// One row under the card. When they do not all fit, they take turns a row at a time, most important first.
+let ALERT_PAGES = [], ALERT_PAGE = 0;
+function pageAlerts(box, items){
+  box.innerHTML = items.join('');
+  const room = box.clientWidth, gap = parseFloat(getComputedStyle(box).columnGap) || 0, pages = [];
+  let used = Infinity;
+  [...box.children].forEach((el, i) => {
+    const w = el.offsetWidth;
+    if(used + gap + w > room){ pages.push([]); used = -gap; }
+    used += gap + w; pages[pages.length - 1].push(items[i]);
+  });
+  ALERT_PAGES = pages.map(p => p.join(''));
+  box.__h = null;
+  showAlerts(false);
+}
+function showAlerts(turn){
+  const box = document.getElementById('alerts'), n = ALERT_PAGES.length;
+  if(!box) return;
+  if(turn && n > 1) ALERT_PAGE++;
+  const html = n ? ALERT_PAGES[ALERT_PAGE % n] : '';
+  if(turn && n > 1 && box.__h !== html) crossfade(box, () => setHTML(box, html)); else setHTML(box, html);
 }
 // the first 5 minutes after an adhan: a large panel over the card; the iqama countdown stays in the bottom panel
 function renderAdhan(mins){
@@ -1483,7 +1620,11 @@ function renderOccasion(x, elL, elD, elS){
   const remainingKey=left<=86400000 ? 'timer:'+at : 'days:'+Math.ceil(left/86400000);
   if(elD.__remainingKey===remainingKey)return;
   elD.__remainingKey=remainingKey;
-  setHTML(elD,left<=86400000 ? `<span class="occasion-count">${sand}${cdn(at,'حان الموعد')}</span>` : `<span class="num">${ar(Math.ceil(left/86400000))}</span><span class="day-unit"> يوم متبقي</span>`);
+  setHTML(elD,left<=86400000 ? `<span class="occasion-count">${sand}${cdn(at,'حان الموعد')}</span>` : daysLeft(Math.ceil(left/86400000)));
+}
+function daysLeft(n){
+  const [u, v] = n === 2 ? ['يومان', 'متبقيان'] : n >= 3 && n <= 10 ? ['أيام', 'متبقية'] : ['يوم', 'متبقي'];
+  return `<span class="num">${ar(n)}</span><span class="day-unit"><i>${u}</i><i>${v}</i></span>`;
 }
 
 let FAM_CACHE = {key:'', list:[]}, FAM_K = -1;
@@ -2082,11 +2223,12 @@ function seriesItems(){
 function whenText(it, now){
   const next=it.next && it.next.t>now ? it.next : null;
   const entry=next || it.prev;
-  if(!entry || !entry.t) return '<span class="st"><span>تاريخ العرض لم يُعلن</span><span>المدة غير متاحة</span></span>';
-  const date=IDF(GREG,{timeZone:CONFIG.timezone,weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date(entry.t));
-  const left=entry.t-now;
-  const duration=left>0 ? (left<=86400000 && !entry.dateOnly ? cdn(entry.t,'بدأ العرض') : 'متبقي '+ar(Math.ceil(left/86400000))+' يوم') : 'تم العرض'+(it.fresh ? ' · جديد' : '');
-  return `<span class="st"><span class="release-date"><span>${esc(IDF('ar-SA-u-ca-islamic-umalqura',{timeZone:CONFIG.timezone,weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date(entry.t)))}</span><span>${esc(date)}</span></span><span class="release-left">${duration}</span></span>`;
+  if(!entry || !entry.t) return '<span class="st"><span class="release-left">لم يُعلن</span><span class="release-date"><span>تاريخ العرض لم يُعلن</span></span></span>';
+  const t=new Date(entry.t), left=entry.t-now;
+  const hijri=IDF('ar-SA-u-ca-islamic-umalqura',{timeZone:CONFIG.timezone,weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(t).replace('،','');
+  const greg=IDF(GREG,{timeZone:CONFIG.timezone,day:'numeric',month:'long',year:'numeric'}).format(t)+' م';
+  const duration=left>0 ? (left<=86400000 && !entry.dateOnly ? cdn(entry.t,'بدأ العرض') : daysLeft(Math.ceil(left/86400000))) : 'تم العرض'+(it.fresh ? ' · جديد' : '');
+  return `<span class="st"><span class="release-left">${duration}</span><span class="release-date"><span>${esc(hijri)}</span><span>${esc(greg)}</span></span></span>`;
 }
 
 function seriesSlide(){
@@ -3009,10 +3151,12 @@ function boot(){
   if(wxCity) wxCity.textContent = CONFIG.city;
   const cs = document.getElementById('clock-sub');
   if(cs) cs.textContent = 'بتوقيت ' + CONFIG.city.split(/\s+[-–]\s+|،/)[0].trim();
-  document.title = 'YourTV V2 · توزيع 7';
+  document.title = 'YourTV V2 · توزيع 10';
   applyBackground(true);
   loadPhotoIndex().then(() => applyBackground(true));
   setInterval(() => applyBackground(false), 60*1000);
+  document.querySelector('.clock-face').insertAdjacentHTML('afterbegin', watchSVG());
+  fitWatch(); addEventListener('resize', fitWatch);
   tickClock(); tickDates(); tickRamadan(); buildToday();
   if(CONFIG.panel === 'none') document.querySelector('.week').style.display = 'none';
   else if(CONFIG.panel !== 'shows') renderPanel(false);   // its own data arrives with prayers, weather, matches
@@ -3021,6 +3165,7 @@ function boot(){
 
   setInterval(tickClock, 1000);
   setInterval(renderMessage,1000);
+  setInterval(() => showAlerts(true), 7000);
   setInterval(()=>{ tickDates(); tickPrayer(); tickRamadan(); if(CONFIG.panel === 'prayers') renderPanel(false); }, 15000);
   setInterval(() => renderMatches(false), 60000);
   setInterval(() => renderMatches(true), CONFIG.matchPageMs);
