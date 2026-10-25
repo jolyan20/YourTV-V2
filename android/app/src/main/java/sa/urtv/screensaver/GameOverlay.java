@@ -92,6 +92,8 @@ final class GameOverlay {
             if (win > 0) left = Math.min(active ? left : Long.MAX_VALUE, win - now);
             if (dailyMax > 0) left = Math.min(left, (dailyMax * 60L - used) * 1000);
             if ((active || win > 0) && draw && (onPort || src == null) && left > 0 && left != Long.MAX_VALUE) showChip(left); else hideChip();
+            // no «العرض فوق التطبيقات» on this TV: short notices instead, every 15 minutes and each of the last 5
+            if ((active || win > 0) && !draw && (onPort || src == null) && left > 0 && left != Long.MAX_VALUE) toastAt(left);
             if (!active && until > 0 && now <= until + END_SHOW_MS
                     && ControlStore.prefs(c).getLong("gameDone", 0) != until) {   // once per game time, even after a restart
                 ControlStore.prefs(c).edit().putLong("gameDone", until).apply();
@@ -177,6 +179,15 @@ final class GameOverlay {
         lp.x = dp(28);
         lp.y = dp(22);
         return lp;
+    }
+
+    private long lastToast = -1;
+    private void toastAt(long left) {
+        long min = (left + 59_999) / 60_000;
+        boolean due = min <= 5 || min % 15 == 0;
+        if (!due || min == lastToast) return;
+        lastToast = min;
+        try { android.widget.Toast.makeText(c, "🎮 باقي من وقت اللعب " + min + " دقيقة", android.widget.Toast.LENGTH_LONG).show(); } catch (Exception ignored) { }
     }
 
     private void showChip(long left) {

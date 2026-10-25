@@ -98,6 +98,16 @@ final class QuranWindow {
         w.setHorizontalScrollBarEnabled(false);
         w.setOverScrollMode(View.OVER_SCROLL_NEVER);
         w.setWebChromeClient(new WebChromeClient());
+        // no ads in the household's clips and streams: the requests that fetch or count ads get an empty answer, so
+        // YouTube's player goes straight to the video (an ad it cannot load is skipped)
+        w.setWebViewClient(new android.webkit.WebViewClient() {
+            @Override
+            public android.webkit.WebResourceResponse shouldInterceptRequest(WebView v, android.webkit.WebResourceRequest r) {
+                if (isAd(r.getUrl())) return new android.webkit.WebResourceResponse("text/plain", "utf-8", 204, "No Content",
+                    java.util.Collections.<String, String>emptyMap(), new java.io.ByteArrayInputStream(new byte[0]));
+                return super.shouldInterceptRequest(v, r);
+            }
+        });
         WebSettings s = w.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -126,7 +136,7 @@ final class QuranWindow {
             + "</head><body><div id='p'></div><script>var P,OFF=__OFF__,FIXED=__FIXED__,START=__START__,END=__END__,T0=__T0__,LEAD=__LEAD__;"
             + "function hnow(){return Date.now()+OFF}"
             + "function onYouTubeIframeAPIReady(){var v={autoplay:1,controls:0,modestbranding:1,rel:0,playsinline:1};if(FIXED){v.start=START;v.end=END}"
-            + "P=new YT.Player('p',{width:'100%',height:'100%',videoId:'__ID__',playerVars:v,events:{onReady:function(e){e.target.playVideo();setInterval(step,2000)}}})}"
+            + "P=new YT.Player('p',{host:'https://www.youtube-nocookie.com',width:'100%',height:'100%',videoId:'__ID__',playerVars:v,events:{onReady:function(e){e.target.playVideo();setInterval(step,2000)}}})}"
             + "function step(){if(!P||!P.getCurrentTime)return;var c=P.getCurrentTime();"
             + "if(FIXED){var w=START+(hnow()-T0)/1000;if(w>START+.5&&Math.abs(c-w)>.4)P.seekTo(w,true)}"
             + "else if(LEAD&&window.Bridge&&P.getPlayerState()==1)Bridge.at(Math.round(c*1000),hnow())}"
@@ -172,6 +182,20 @@ final class QuranWindow {
         } finally {
             if (con != null) con.disconnect();
         }
+    }
+
+    private static final String[] AD_HOSTS = {"doubleclick.net", "googlesyndication.com", "googleadservices.com",
+        "googletagservices.com", "imasdk.googleapis.com", "pagead2.googlesyndication.com", "ad.youtube.com", "ads.youtube.com"};
+    private static final String[] AD_PATHS = {"/pagead/", "/api/stats/ads", "/ptracking", "/get_midroll_", "/youtubei/v1/player/ad_break",
+        "/generate_204?ad", "/api/stats/atr", "/ad_data_", "/pcs/activeview"};
+
+    /** an ad, or its counting: never the video, the player or its pages */
+    static boolean isAd(android.net.Uri u) {
+        String host = String.valueOf(u.getHost()), path = String.valueOf(u.getPath()) + (u.getQuery() == null ? "" : "?" + u.getQuery());
+        for (String h : AD_HOSTS) if (host.equals(h) || host.endsWith("." + h)) return true;
+        if (host.endsWith("youtube.com") || host.endsWith("youtube-nocookie.com") || host.endsWith("googlevideo.com"))
+            for (String p : AD_PATHS) if (path.startsWith(p) || path.contains(p)) return true;
+        return host.endsWith("googlevideo.com") && path.contains("ctier=L") && path.contains("&oad=");   // an ad's own video stream
     }
 
     void hide() {

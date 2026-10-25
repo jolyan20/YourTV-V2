@@ -122,6 +122,8 @@ final class ControlStore {
             o.put("files", Uploads.list(c));   // the household's own files: the adhan, birthday photos
             o.put("me", me(c));                // which TV this is: items and settings can be for one TV only
             o.put("tvs", tvs(c));
+            // can this TV draw over other apps (game time, notices over the PlayStation or YouTube)?
+            o.put("overlay", android.os.Build.VERSION.SDK_INT < 23 || android.provider.Settings.canDrawOverlays(c));
         } catch (Exception ignored) { }
         return o;
     }

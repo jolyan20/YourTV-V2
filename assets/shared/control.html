@@ -139,6 +139,9 @@
         <div><label>مقطع يوتيوب (اختياري)</label>
           <input id="msg-clip" inputmode="url" placeholder="الصق رابط المقطع"><small>يشتغل في نافذة على الشاشة بعد صوت التنبيه</small></div>
       </div>
+      <label>مستوى الصوت للرسالة: <b id="msg-vol-l">بدون تغيير</b></label>
+      <div class="row"><input id="msg-vol" type="range" min="0" max="100" step="5" value="30" disabled oninput="$('msg-vol-l').textContent=this.value+'٪'">
+        <label class="switch" style="flex:0 0 auto;margin:0"><input id="msg-vol-on" type="checkbox" onchange="$('msg-vol').disabled=!this.checked;$('msg-vol-l').textContent=this.checked?$('msg-vol').value+'٪':'بدون تغيير'"> حدد</label></div>
       <div class="row">
         <div><label>يبدأ من الثانية</label><input id="msg-clip-from" type="number" min="0" step="1" placeholder="من الرابط أو ٠"></div>
         <div><label>مدة المقطع (ثانية)</label><input id="msg-clip-len" type="number" min="5" max="3600" step="5" value="120"></div>
@@ -335,6 +338,10 @@
       <div class="row"><input id="g-until" type="time"><button class="ghost" style="flex:0 0 auto" onclick="gameUntil()">ابدأ</button></div>
       <div class="switch" style="margin-top:10px"><span>لما ينتهي الوقت يرجع التلفزيون للشاشة الرئيسية</span><input id="g-home" type="checkbox" checked></div>
       <p class="muted">يظهر عد تنازلي صغير في زاوية الشاشة فوق البلايستيشن، ويصير برتقالي آخر ٥ دقائق، وبالنهاية تظهر «انتهى وقت اللعب».</p>
+      <div id="g-perm" class="muted" style="display:none;border:1px solid #f06a5a;border-radius:10px;padding:10px;margin-top:8px">
+        ⚠️ هذا التلفزيون ما عنده إذن «العرض فوق التطبيقات»، فالعد ما يظهر فوق البلايستيشن (تظهر تنبيهات قصيرة بداله).
+        <button class="ghost" style="width:100%;margin-top:8px" onclick="api('/api/openoverlay', {}).then(() => toast('افتح الإذن على التلفزيون وفعّله')).catch(() => {})">افتح الإذن على التلفزيون</button></div>
+      <p class="muted">وقت اللعب خاص بالتلفزيون المختار فوق (اللي عليه البلايستيشن).</p>
     </div>
     <div class="card">
       <h2>🔒 قفل البلايستيشن</h2>
@@ -541,6 +548,7 @@ function openTab(k){
 }
 
 function render(){
+  { const gp = document.getElementById('g-perm'); if(gp) gp.style.display = STATE.overlay === false ? 'block' : 'none'; }
   $('quran-state').innerHTML = STATE.quran ? '<span class="on-air">● البث شغّال</span>' : '<span class="off-air">○ البث متوقف</span>';
   const m = STATE.message, live = m && m.text && (!m.until || m.until > Date.now());
   $('home-msg').innerHTML = '<h2>💬 الرسالة</h2>' + (live
@@ -824,6 +832,7 @@ function sendMessage(){
     clip.end = clip.start + Math.max(5, Math.min(3600, Math.round(+$('msg-clip-len').value || 120)));
   }
   save('message', {text, sender:$('msg-sender').value.trim() || 'النظام', style: $('msg-style').value, sound: $('msg-sound').value,
+    ...($('msg-vol-on').checked ? {volume: +$('msg-vol').value} : {}),
     ...(clip ? {clip} : {}), until: Date.now() + mins*60000, at: Date.now()});
 }
 // youtu.be/ID, youtube.com/watch?v=ID, /shorts/ID, /live/ID or /embed/ID, with its t= start (90, 1m30s)

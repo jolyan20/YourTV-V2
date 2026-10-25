@@ -234,6 +234,30 @@ for (const [width, height] of [[1920, 1080], [1280, 720], [960, 540]]) {
   await a.ctx.close(); await b.ctx.close();
 }
 
+// ---- today's games include a followed team's game whatever its league; the dua after the adhan; the series' episode
+{
+  const { p, ctx, errors } = await open('tv.html', 'teams=136013&panel=verse');
+  const r = await p.evaluate(() => {
+    const now = Date.now();
+    MATCHES['136013'] = { idEvent: 'own1', strHomeTeam: 'Al-Hilal', strAwayTeam: 'Al-Ain', idHomeTeam: '136013', idAwayTeam: '1', idLeague: '9999',
+      strLeague: 'AFC Champions League Elite', strTimestamp: new Date(now + 2 * 36e5).toISOString() };
+    TODAY_BY = {}; buildToday();
+    const own = TODAY_GAMES.some(x => x.ev.idEvent === 'own1');
+    TOP_LEAGUES.forEach(([id]) => TODAY_FAILED.add(id)); TODAY_GAMES = []; renderMatches();
+    const failed = document.getElementById('match-row').textContent;
+    showDua('k1'); const dua = document.getElementById('dua').classList.contains('on') && /الوسيلة|الْوَسِيلَةَ/.test(document.getElementById('dua').textContent);
+    navigateCard(1); const closed = !document.getElementById('dua').classList.contains('on');
+    const ep = seriesEp({ next: { code: 'م٦ ح١٢' } }) + ' | ' + seriesEp({ movie: true });
+    return { own, failed, dua, closed, ep };
+  });
+  check("a followed team's game today shows in today's games", r.own, JSON.stringify(r));
+  check('a sports source that does not answer says so', /تعذر الوصول لمصدر المباريات/.test(r.failed), r.failed);
+  check('the dua after the adhan shows, and left or right closes it', r.dua && r.closed, JSON.stringify(r));
+  check('under a series: its part and episode', r.ep === 'الجزء ٦ · الحلقة ١٢ | فيلم', r.ep);
+  check('games, dua, series: no script errors', !errors.length, errors.join('; '));
+  await ctx.close();
+}
+
 // ---- a finished game's score stays up for a day, even when the API has already moved on
 {
   const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });

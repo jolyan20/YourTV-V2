@@ -125,7 +125,7 @@ final class ControlServer implements Runnable {
             String device=get(h,"x-device","");
             if(!device.isEmpty() && !device.equals("local")) {
                 if(!ControlStore.sessionValid(app,get(h,"x-key",""))) {reply(s,401,"application/json","{}",false);return;}
-                if(!path.matches("/api/(state|prefs|teams|shows|save|upload|quran|appupdate|test)(\\?.*)?")) {reply(s,403,"application/json","{}",false);return;}
+                if(!path.matches("/api/(state|prefs|teams|shows|save|upload|quran|appupdate|test|openoverlay)(\\?.*)?")) {reply(s,403,"application/json","{}",false);return;}
                 relayDevice(s,in,method,path,h,len,device); return;
             }
             byte[] body = new byte[upload ? 0 : len];
@@ -157,7 +157,8 @@ final class ControlServer implements Runnable {
             if ("/api/adhanvolume".equals(path)) {   // the screensaver page: the adhan at its own level, then back
                 if (!from.isLoopbackAddress()) { reply(s, 403, "text/plain", "local only", false); return; }
                 if ("OPTIONS".equals(method)) { reply(s, 204, "text/plain", "", true); return; }
-                adhanVolume(new JSONObject(new String(body, StandardCharsets.UTF_8)).optBoolean("on"));
+                JSONObject a = new JSONObject(new String(body, StandardCharsets.UTF_8));
+                adhanVolume(a.optBoolean("on"), a.has("level") ? a.optInt("level") : -1);   // a message's own level, else the adhan's
                 reply(s, 200, "application/json", "{\"ok\":true}", true); return;
             }
             if ("/api/rev".equals(path)) {   // the screen page, every second: has anything changed, and the household's clock
@@ -296,6 +297,13 @@ final class ControlServer implements Runnable {
                 }
                 return;
             }
+            if ("/api/openoverlay".equals(path) && "POST".equals(method)) {   // the phone page: open the permission on the TV
+                android.content.Intent i = new android.content.Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    android.net.Uri.parse("package:" + app.getPackageName())).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+                try { app.startActivity(i); }
+                catch (Exception e) { try { app.startActivity(new android.content.Intent(android.provider.Settings.ACTION_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception ignored) { } }
+                reply(s, 200, "application/json", "{\"ok\":true}", false); return;
+            }
             if ("/api/pair".equals(path) && "POST".equals(method)) {   // the importing TV hands this one the shared sync key
                 TvImport.pair(app, new JSONObject(new String(body, StandardCharsets.UTF_8)));
                 reply(s, 200, "application/json", "{\"ok\":true}", false); return;
@@ -368,7 +376,7 @@ final class ControlServer implements Runnable {
     }
 
     /** on: remember the TV's volume and set the adhan's (display.adhanVolume, 0..100, default 20); off: put it back */
-    private void adhanVolume(boolean on) {
+    private void adhanVolume(boolean on, int asked) {
         android.media.AudioManager au = (android.media.AudioManager) app.getSystemService(android.content.Context.AUDIO_SERVICE);
         if (au == null) return;
         int st = android.media.AudioManager.STREAM_MUSIC, max = au.getStreamMaxVolume(st);
@@ -377,7 +385,7 @@ final class ControlServer implements Runnable {
             if (on) {
                 if (!p.contains("volBeforeAdhan")) p.edit().putInt("volBeforeAdhan", au.getStreamVolume(st)).apply();
                 JSONObject d = ControlStore.state(app).optJSONObject("display");
-                int level = Math.max(0, Math.min(100, d == null ? 20 : d.optInt("adhanVolume", 20)));
+                int level = Math.max(0, Math.min(100, asked >= 0 ? asked : d == null ? 20 : d.optInt("adhanVolume", 20)));
                 au.setStreamVolume(st, Math.round(max * level / 100f), 0);
             } else if (p.contains("volBeforeAdhan")) {
                 au.setStreamVolume(st, p.getInt("volBeforeAdhan", au.getStreamVolume(st)), 0);
