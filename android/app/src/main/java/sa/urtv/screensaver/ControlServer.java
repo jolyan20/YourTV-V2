@@ -152,6 +152,12 @@ final class ControlServer implements Runnable {
                 ControlStore.setQuran(app, new JSONObject(new String(body, StandardCharsets.UTF_8)).optBoolean("on"));
                 reply(s, 200, "application/json", "{\"ok\":true}", true); return;
             }
+            if ("/api/adhanvolume".equals(path)) {   // the screensaver page: the adhan at its own level, then back
+                if (!from.isLoopbackAddress()) { reply(s, 403, "text/plain", "local only", false); return; }
+                if ("OPTIONS".equals(method)) { reply(s, 204, "text/plain", "", true); return; }
+                adhanVolume(new JSONObject(new String(body, StandardCharsets.UTF_8)).optBoolean("on"));
+                reply(s, 200, "application/json", "{\"ok\":true}", true); return;
+            }
             if ("/api/adhan".equals(path)) {   // the screensaver page: play the adhan video now
                 if (!from.isLoopbackAddress()) { reply(s, 403, "text/plain", "local only", false); return; }
                 if ("OPTIONS".equals(method)) { reply(s, 204, "text/plain", "", true); return; }
@@ -266,6 +272,25 @@ final class ControlServer implements Runnable {
         } catch (Exception e) {
             try { reply(s, 400, "text/plain", "bad request", false); } catch (Exception ignored) { }
         }
+    }
+
+    /** on: remember the TV's volume and set the adhan's (display.adhanVolume, 0..100, default 20); off: put it back */
+    private void adhanVolume(boolean on) {
+        android.media.AudioManager au = (android.media.AudioManager) app.getSystemService(android.content.Context.AUDIO_SERVICE);
+        if (au == null) return;
+        int st = android.media.AudioManager.STREAM_MUSIC, max = au.getStreamMaxVolume(st);
+        android.content.SharedPreferences p = ControlStore.prefs(app);
+        try {
+            if (on) {
+                if (!p.contains("volBeforeAdhan")) p.edit().putInt("volBeforeAdhan", au.getStreamVolume(st)).apply();
+                JSONObject d = ControlStore.state(app).optJSONObject("display");
+                int level = Math.max(0, Math.min(100, d == null ? 20 : d.optInt("adhanVolume", 20)));
+                au.setStreamVolume(st, Math.round(max * level / 100f), 0);
+            } else if (p.contains("volBeforeAdhan")) {
+                au.setStreamVolume(st, p.getInt("volBeforeAdhan", au.getStreamVolume(st)), 0);
+                p.edit().remove("volBeforeAdhan").apply();
+            }
+        } catch (Exception ignored) { }   // a TV with fixed volume (an amplifier's): nothing to set
     }
 
     private final Map<String,String> deviceSessions=new java.util.concurrent.ConcurrentHashMap<>();

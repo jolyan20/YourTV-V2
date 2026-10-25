@@ -225,6 +225,7 @@
         <div><label>الصلوات</label><select id="adhan-mode"><option value="full">الأذان كامل</option><option value="takbir">أول تكبيرتين</option><option value="off">بدون صوت</option></select></div>
         <div><label>الفجر</label><select id="adhan-fajr-mode"><option value="full">الأذان كامل</option><option value="takbir">أول تكبيرتين</option><option value="off">بدون صوت</option></select></div>
       </div>
+      <label>مستوى صوت الأذان (من ١٠٠)، ويرجع صوت التلفزيون كما كان بعده</label><input id="adhan-volume" type="number" min="0" max="100" step="1" inputmode="numeric">
       <p class="muted">رفع الفيديو والملف الصوتي متاح في تبويب «فيديو الأذان».</p>
       <div class="switch"><span>بث الحرم المكي تلقائياً وقت صلاة الجمعة والتراويح</span><input id="auto-quran" type="checkbox"></div>
       <div class="switch"><span>تفتح الشاشة أول ما يشتغل التلفزيون</span><input id="start-power" type="checkbox"></div>
@@ -478,6 +479,7 @@ function render(){
   $('q-size').value = d.quranSize || 's'; $('q-pos').value = d.quranPos || 'tc';
   const am = m => ['full', 'takbir', 'off'].includes(m) ? m : null;
   $('adhan-mode').value = d.adhanSound === false ? 'off' : am(d.adhanMode) || 'full';
+  $('adhan-volume').value = d.adhanVolume == null ? 20 : d.adhanVolume;
   $('adhan-fajr-mode').value = d.adhanSound === false ? 'off' : am(d.adhanFajrMode) || (d.adhanFajr === false ? 'off' : am(d.adhanMode) || 'full');
   $('auto-quran').checked = d.autoQuran !== false; $('match-sound').checked = d.matchSound !== false;
   $('whistle').value = d.whistle === '1' ? '1' : '2'; $('task-sound').checked = d.taskSound !== false;
@@ -758,7 +760,7 @@ function saveSleep(){ save('sleep', {from: $('sleep-from').value || '00:00', to:
 function saveDisplay(){
   const cards = {}; document.querySelectorAll('[data-card]').forEach(x => cards[x.dataset.card] = x.checked);
   save('display', {...(STATE.display||{}), salaryDate:$('salary-date').value, salaryHolidays:['fitr','adha'].map(k=>({from:$('salary-'+k+'-from').value,to:$('salary-'+k+'-to').value})), cards, cardSec: +$('card-sec').value, photoMin: +$('photo-min').value, quranSize: $('q-size').value, quranPos: $('q-pos').value,
-    adhanMode: $('adhan-mode').value, adhanFajrMode: $('adhan-fajr-mode').value, autoQuran: $('auto-quran').checked, matchSound: $('match-sound').checked,
+    adhanMode: $('adhan-mode').value, adhanFajrMode: $('adhan-fajr-mode').value, adhanVolume: $('adhan-volume').value === '' ? 20 : Math.max(0, Math.min(100, Math.round(+$('adhan-volume').value || 0))), autoQuran: $('auto-quran').checked, matchSound: $('match-sound').checked,
     whistle: $('whistle').value, taskSound: $('task-sound').checked, startOnPower: $('start-power').checked});
 }
 

@@ -1364,7 +1364,7 @@ function playAdhan(cur){
   const host=document.getElementById('adhan'), week=document.querySelector('.week');
   let media=null, timer=null, finished=false;
   const stopMedia=()=>{clearTimeout(timer);if(media){media.onended=null;media.onerror=null;media.onplaying=null;media.onwaiting=null;media.ontimeupdate=null;media.pause();media.removeAttribute('src');media.load();media=null;}};
-  const finish=()=>{if(finished)return;finished=true;stopMedia();ADHAN_ACTIVE=false;ADHAN_FINISHED=key;week.classList.remove('adhan-playing');host.classList.remove('on');host.replaceChildren();host.__h=null;renderPanel(false);};
+  const finish=()=>{if(finished)return;finished=true;stopMedia();adhanVolume(false);ADHAN_ACTIVE=false;ADHAN_FINISHED=key;week.classList.remove('adhan-playing');host.classList.remove('on');host.replaceChildren();host.__h=null;renderPanel(false);};
   const start=(name,isVideo)=>{
     stopMedia();
     if(!name){finish();return;}
@@ -1382,7 +1382,12 @@ function playAdhan(cur){
     timer=setTimeout(fail,15000);
     try{const play=media.play();if(play)play.catch(fail);}catch(e){fail();}
   };
+  if(video || audio) adhanVolume(true);
   start(video || audio,!!video);
+}
+// the adhan at the household's level (20 of 100 unless the phone page says otherwise), the TV's own volume after
+function adhanVolume(on){
+  try{ fetch('http://127.0.0.1:8766/api/adhanvolume', {method:'POST', body: JSON.stringify({on})}).catch(()=>{}); }catch(e){}
 }
 // short sounds made here (no files): a soft chime, and a referee's whistle for kick-off
 let ACTX = null;
