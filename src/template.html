@@ -252,8 +252,8 @@
   /* the card: each one slides in from above and leaves downward, slowly; dots beside it show which one */
   .week{position:relative}
   .wbody{transition:transform 1.1s cubic-bezier(.4,0,.2,1),opacity 1.1s ease}
-  .wbody.out{transform:translateY(5vh);opacity:0}
-  .wbody.pre{transform:translateY(-5vh);opacity:0;transition:none}
+  .wbody.out{transform:translateY(-5vh);opacity:0}
+  .wbody.pre{transform:translateY(5vh);opacity:0;transition:none}
   .dots{position:absolute;left:-1.6vw;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:.9vh}
   .dots i{display:block;width:7px;height:7px;border-radius:50%;background:rgba(246,239,224,.28);transition:all .6s ease}
   .dots i.on{background:var(--gold);height:20px;border-radius:4px}
@@ -421,9 +421,9 @@
   .subline .chip.city{color:#F3E9D2}
   /* a ghost of the old content fades out while the new one fades in: no blank moment */
   .xf-ghost{pointer-events:none;z-index:2;transition:opacity .9s ease,transform .9s ease}
-  .xf-ghost.xf-gone{opacity:0;transform:translateY(1.4vh)}
-  .xf-in{animation:xfIn .9s ease both}
-  @keyframes xfIn{from{opacity:0;transform:translateY(-1.4vh)}to{opacity:1;transform:none}}
+  .xf-ghost.xf-gone{opacity:0;transform:translateY(-1.4vh)}
+  .xf-in{animation:xfIn 1.1s cubic-bezier(.22,.61,.36,1) both}
+  @keyframes xfIn{from{opacity:0;transform:translateY(1.6vh)}to{opacity:1;transform:none}}
   .bottom,.p-match,.p-mid{position:relative}
   /* family occasions: their own panel */
   .bottom.fam{grid-template-columns:.85fr .78fr .78fr 1.45fr;gap:1.8vw}
@@ -682,12 +682,12 @@ html:not(.widget) .dates>div:not(.rule){display:flex;align-items:center;gap:.3em
 html:not(.widget) .dates #day-name{color:var(--gold);font-weight:500}
 html:not(.widget) .dates .t24 b{direction:ltr;unicode-bidi:isolate;font-family:'ThmanyahDisplay','Thmanyah',serif;font-weight:700;
   font-size:1.35vw;letter-spacing:.04em;color:#FFF3D6;font-variant-numeric:tabular-nums}
-html:not(.widget) .clockwrap{grid-column:10/13;padding:0}
+html:not(.widget) .clockwrap{grid-column:10/13;padding:0;overflow:hidden;justify-self:stretch;align-self:stretch}
 .clockwrap .subline{display:none}
-.clock-face{width:auto;height:100%;max-width:100%;aspect-ratio:232/226;border:0;border-radius:0;background:none;box-shadow:none}
+.clock-face{width:min(100%,24vh);height:auto;aspect-ratio:1;border:0;border-radius:50%;background:none;box-shadow:none}
 .clock-face>svg{position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 .8vh 1.6vh rgba(0,0,0,.55))}
 .clock-face>svg.watch-hands{filter:none;z-index:3;will-change:transform}
-.clock-face .clock{inset:auto;left:37.93%;width:24.14%;top:55.31%;height:9.73%;z-index:2;font-size:1.9vh;line-height:1;
+.clock-face .clock{inset:auto;left:36.07%;width:27.86%;top:55.97%;height:10.95%;z-index:2;font-size:1.9vh;line-height:1;
   color:#F6E2A6;letter-spacing:0;text-shadow:0 1px 2px rgba(0,0,0,.6)}
 html.night .clock-face .clock{color:#F6E2A6}
 .clock-face .clock .sep{font-size:.85em;transform:translateY(-.06em);padding:0 .04em;color:#F6E2A6}
@@ -701,6 +701,10 @@ html.night .clock-face .clock{color:#F6E2A6}
 .release-left .num,.bottom .occasion-content .num{font-family:'ThmanyahDisplay','Thmanyah',serif;font-size:1.7vw;line-height:1;color:#FFF3D6}
 .day-unit{display:inline-flex;flex-direction:column;align-items:flex-start;max-width:none;font-size:.62vw;line-height:1.25;color:#E8B07A;font-family:'Thmanyah',sans-serif;font-weight:400}
 .day-unit i{font-style:normal}
+/* every box keeps its content inside: the title takes its height, the rest gets what is left */
+html:not(.widget) .v2-weather{display:flex;flex-direction:column}
+html:not(.widget) #v2-forecast{flex:1 1 0;height:auto;min-height:0}
+html:not(.widget) #v2-series{flex:1 1 0;height:auto;min-height:0}
 </style>
 </head>
 <body>
@@ -834,7 +838,17 @@ const IDF_CACHE = {};
 function IDF(loc, opt){ const k = loc + JSON.stringify(opt || {}); return IDF_CACHE[k] || (IDF_CACHE[k] = new Intl.DateTimeFormat(loc, opt)); }
 // write only what changed: no relayout every second for the same text
 function setHTML(el, html){ if(el && el.__h !== html){ el.innerHTML = html; el.__h = html; } }
-// the old content fades out over the new one as it fades in
+// a box's new content rises softly into place; a running countdown ticking alone is not new content
+const softKey = h => h.replace(/(<span class="cdn"[^>]*>)[^<]*/g, '$1');
+function softHTML(el, html){
+  if(!el) return;
+  const k = softKey(html);
+  if(el.__k === k) return;
+  const first = el.__k === undefined;
+  el.__k = k;
+  if(first || document.hidden) setHTML(el, html); else crossfade(el, () => setHTML(el, html));
+}
+// the new content rises into place from below as it fades in
 function crossfade(el, update){
   update();
   if(el && !document.hidden){ el.classList.remove('xf-in'); void el.offsetWidth; el.classList.add('xf-in'); }
@@ -895,10 +909,11 @@ function tickClock(){
   applyMode();
 }
 
-// The watch: a two-tone Datejust 36 head without its bracelet (fluted yellow-gold bezel, steel case, mint-green
-// sunburst dial, gold batons, the date at 3 under its lens), drawn once. The hands are their own layer, so the
-// second hand repaints only itself. Centre at 0,0; the 12-hour time sits in a small plaque above the 6.
-const WATCH_BOX = '-116 -113 232 226';
+// The watch: the round head of a two-tone Datejust 36 (fluted yellow-gold bezel, steel case, mint-green sunburst
+// dial, gold batons, the crown at 12, the date at 3 under its lens), drawn once. No lugs, crown or lettering.
+// The hands are their own layer, so the second hand repaints only itself. Centre at 0,0; the 12-hour time sits
+// in a small plaque above the 6.
+const WATCH_BOX = '-100.5 -100.5 201 201';
 function watchSVG(){
   const P = (r, a) => { const t = (a - 90) * Math.PI / 180; return (r * Math.cos(t)).toFixed(2) + ' ' + (r * Math.sin(t)).toFixed(2); };
   const wedge = (r1, r2, a, b, fill) => `<path d="M${P(r1, a)}L${P(r2, a)}L${P(r2, b)}L${P(r1, b)}Z" fill="${fill}"/>`;
@@ -907,12 +922,9 @@ function watchSVG(){
   for(let i = 0; i < 90; i++) rays += wedge(0, 77.6, i*4, i*4 + 2, i % 2 ? '#fff' : '#000');
   for(let i = 0; i < 60; i++) if(i % 5) track += `<path d="M${P(72.6, i*6)}L${P(75.6, i*6)}"/>`;
   for(let h = 1; h < 12; h++) if(h !== 3) idx += `<g transform="rotate(${h*30})"><rect x="-2.6" y="-66.5" width="5.2" height="14" rx=".7"/><rect x="-.85" y="-65" width="1.7" height="10.6" rx=".85" fill="#F4F1E6" stroke="none"/></g>`;
-  const lug = '<path d="M-68 -68 C-66 -86 -62 -100 -58.5 -108.5 Q-57.5 -111 -54 -111 L-39.5 -111 Q-36.5 -111 -36.5 -108 L-36 -82Z"/><path d="M-60 -104 L-40 -104" stroke="#fff" stroke-opacity=".55" stroke-width=".6" fill="none"/>';
-  const serif = "font-family:'Times New Roman',Georgia,'Noto Serif',serif";
   return `<svg class="watch" viewBox="${WATCH_BOX}" aria-hidden="true"><defs>
 <linearGradient id="wSteel" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FDFDFD"/><stop offset=".28" stop-color="#C4C6C8"/><stop offset=".5" stop-color="#85888C"/><stop offset=".72" stop-color="#E4E5E6"/><stop offset="1" stop-color="#6E7175"/></linearGradient>
 <linearGradient id="wGold" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8A6624"/><stop offset=".35" stop-color="#F6DC93"/><stop offset=".55" stop-color="#FFF1C2"/><stop offset=".78" stop-color="#D4A94F"/><stop offset="1" stop-color="#7D5A1C"/></linearGradient>
-<linearGradient id="wGoldV" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF1C2"/><stop offset=".5" stop-color="#D4A94F"/><stop offset="1" stop-color="#7D5A1C"/></linearGradient>
 <radialGradient id="wLit" cx="0" cy="0" r="96" gradientUnits="userSpaceOnUse"><stop offset=".84" stop-color="#C99B45"/><stop offset=".9" stop-color="#FBE7A8"/><stop offset=".95" stop-color="#E9C26A"/><stop offset="1" stop-color="#A27A2C"/></radialGradient>
 <radialGradient id="wShade" cx="0" cy="0" r="96" gradientUnits="userSpaceOnUse"><stop offset=".84" stop-color="#7A5A1E"/><stop offset=".9" stop-color="#B98E3E"/><stop offset=".95" stop-color="#94702A"/><stop offset="1" stop-color="#5E4313"/></radialGradient>
 <linearGradient id="wSheen" x1=".1" y1=".05" x2=".9" y2=".95"><stop offset="0" stop-color="#fff" stop-opacity=".5"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".42"/></linearGradient>
@@ -920,10 +932,6 @@ function watchSVG(){
 <radialGradient id="wDial" cx="0" cy="0" r="77.6" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#A3C98F"/><stop offset=".42" stop-color="#76A663"/><stop offset=".82" stop-color="#457A3A"/><stop offset="1" stop-color="#244A20"/></radialGradient>
 <linearGradient id="wLens" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".45"/><stop offset=".5" stop-color="#fff" stop-opacity=".05"/><stop offset="1" stop-color="#fff" stop-opacity=".2"/></linearGradient>
 </defs>
-<g fill="url(#wSteel)" stroke="#4F5357" stroke-width=".5">${lug}<g transform="scale(-1 1)">${lug}</g><g transform="scale(1 -1)">${lug}</g><g transform="scale(-1 -1)">${lug}</g></g>
-<rect x="98" y="-6.5" width="6" height="13" fill="url(#wSteel)" stroke="#4F5357" stroke-width=".4"/>
-<rect x="103" y="-10.5" width="10.5" height="21" rx="2.2" fill="url(#wGoldV)" stroke="#6B4F1D" stroke-width=".45"/>
-<path d="M104 -7.5h9M104 -4.5h9M104 -1.5h9M104 1.5h9M104 4.5h9M104 7.5h9" stroke="#7D5A1C" stroke-width=".55" opacity=".7"/>
 <circle r="100" fill="url(#wSteel)" stroke="#45494D" stroke-width=".7"/>
 <circle r="97.2" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width=".5"/>
 <circle r="96" fill="#7A5A1E"/>${flutes}
@@ -939,12 +947,6 @@ function watchSVG(){
 <path d="M-6.6 -53L-8.3 -60.6L-4.6 -56.5L-4.1 -62.3L-1.6 -56.7L0 -63.5L1.6 -56.7L4.1 -62.3L4.6 -56.5L8.3 -60.6L6.6 -53Z"/>
 <rect x="-6.6" y="-53.2" width="13.2" height="2.6" rx=".7"/>
 <circle cx="-8.3" cy="-61.5" r="1.2"/><circle cx="-4.1" cy="-63.3" r="1.2"/><circle cx="0" cy="-64.6" r="1.25"/><circle cx="4.1" cy="-63.3" r="1.2"/><circle cx="8.3" cy="-61.5" r="1.2"/></g>
-<g fill="#E9C873" text-anchor="middle" style="${serif}">
-<text y="-40.5" font-size="7" font-weight="700" letter-spacing=".6">ROLEX</text>
-<text y="-33.6" font-size="3.3" letter-spacing=".3">OYSTER PERPETUAL</text>
-<text y="-29.1" font-size="3.3" letter-spacing=".3">DATEJUST</text>
-<text y="42.6" font-size="2.6" letter-spacing=".15">SUPERLATIVE CHRONOMETER</text>
-<text y="46.2" font-size="2.6" letter-spacing=".15">OFFICIALLY CERTIFIED</text></g>
 <rect x="-28" y="12" width="56" height="22" rx="3" fill="#0B2410" fill-opacity=".62" stroke="#D9B65E" stroke-width=".55"/>
 <rect x="50" y="-7.6" width="17.6" height="15.2" rx=".8" fill="#FBFAF5" stroke="url(#wGold)" stroke-width="1.1"/>
 <text id="v2-date" x="58.8" y=".4" font-size="11" text-anchor="middle" dominant-baseline="central" fill="#141414" style="font-family:'ThmanyahDisplay','Thmanyah',serif"></text>
@@ -960,8 +962,11 @@ function watchSVG(){
 }
 // the 12-hour time fills its plaque on the dial whatever the watch's size
 function fitWatch(){
-  const f = document.querySelector('.clock-face'), c = f && f.querySelector('.clock');
-  if(c && f.clientHeight) c.style.fontSize = (f.clientHeight * .058).toFixed(1) + 'px';
+  const f = document.querySelector('.clock-face'), box = f && f.parentNode, c = f && f.querySelector('.clock');
+  if(!c || !box.clientHeight) return;
+  const d = Math.floor(Math.min(box.clientWidth, box.clientHeight));
+  f.style.width = f.style.height = d + 'px';
+  c.style.fontSize = (d * .065).toFixed(1) + 'px';
 }
 
 // ---------- day and night: from sunrise to Maghrib is day; the look, the photos and the sign follow ----------
@@ -1022,10 +1027,10 @@ function dateLine(cal, now, showWeekday = true){
 }
 function tickDates(){
   const now = new Date();
-  document.getElementById('day-name').textContent=IDF(GREG,{timeZone:CONFIG.timezone,weekday:'long'}).format(now);
-  try{ document.getElementById('hijri').innerHTML = dateLine('islamic-umalqura', now, false) + ' هـ'; }catch(e){}
-  try{ document.getElementById('greg').innerHTML = dateLine('gregory', now, false) + ' م'; }catch(e){}
-  try{ document.getElementById('shamsi').innerHTML = shamsiLine(now); }catch(e){}
+  softHTML(document.getElementById('day-name'), esc(IDF(GREG,{timeZone:CONFIG.timezone,weekday:'long'}).format(now)));
+  try{ softHTML(document.getElementById('hijri'), dateLine('islamic-umalqura', now, false) + ' هـ'); }catch(e){}
+  try{ softHTML(document.getElementById('greg'), dateLine('gregory', now, false) + ' م'); }catch(e){}
+  try{ softHTML(document.getElementById('shamsi'), shamsiLine(now)); }catch(e){}
 }
 // «٣ العقرب [٨] ١٤٠٥ هـ.ش»: the solar Hijri year (the Persian calendar's arithmetic) with the zodiac month names
 const BURJ = ['الحمل','الثور','الجوزاء','السرطان','الأسد','السنبلة','الميزان','العقرب','القوس','الجدي','الدلو','الحوت'];
@@ -1196,7 +1201,7 @@ function renderPrayerStrip(mins){
   // the next of all of them, across midnight
   const ahead = x => ((at(x) - mins) % 1440 + 1440) % 1440 || 1440;
   const lit = cur || items.reduce((a, x) => ahead(x) < ahead(a) ? x : a, items[0]);
-  setHTML(strip, items.map(x => {
+  softHTML(strip, items.map(x => {
     const passed = x !== lit && at(x) <= mins;
     const cls = x === lit ? 'next' : passed ? 'past' : x.aux ? 'aux' : '';
     const h12 = x.h % 12 === 0 ? 12 : x.h % 12;
@@ -1317,7 +1322,7 @@ function showAlerts(turn){
   if(!box) return;
   if(turn && n > 1) ALERT_PAGE++;
   const html = n ? ALERT_PAGES[ALERT_PAGE % n] : '';
-  if(turn && n > 1 && box.__h !== html) crossfade(box, () => setHTML(box, html)); else setHTML(box, html);
+  softHTML(box, html);
 }
 // the first 5 minutes after an adhan: a large panel over the card; the iqama countdown stays in the bottom panel
 function renderAdhan(mins){
@@ -2433,7 +2438,7 @@ function renderMatches(turn){
   if(turn) MATCH_PAGE++;
   MATCH_PAGE %= pages;
   const html = slots.slice(MATCH_PAGE * per, MATCH_PAGE * per + per).join('');
-  if(turn && pages > 1 && row.__h !== html) crossfade(row, () => setHTML(row, html)); else setHTML(row, html);
+  softHTML(row, html);
 }
 
 async function fetchLast(id){
@@ -2657,7 +2662,7 @@ function rotatingCard(){
     ? slides.map((_, i) => `<i class="${i === CARD_TURN % slides.length ? 'on' : ''}"></i>`).join('') : '';
   return slides.length ? slides[CARD_TURN % slides.length]() : quoteOfDay();
 }
-// the card leaves downward and the next one comes in from above, slowly
+// the card leaves upward and the next one rises in from below, slowly
 function navigateCard(d){
   if(ADHAN_ACTIVE)return;
   const n=cardSlides().length;if(!n)return;CARD_TURN=((CARD_TURN+d)%n+n)%n;renderPanel(false);
@@ -3127,16 +3132,16 @@ function weatherDock(){
  return current+'<div class="weather-days">'+days+'</div>';
 }
 function renderV2(){
-  setHTML(document.getElementById('v2-forecast'), weatherDock());
+  softHTML(document.getElementById('v2-forecast'), weatherDock());
 
   const sc = SCREEN();
   const kids = GUEST() || !cardOn('stars') ? [] : KIDS().filter(k => sc.id === 'family' || k.id === sc.id);
-  setHTML(document.getElementById('v2-kids'), kids.length ? '<h2>نجوم أبطال عائلتي</h2><div class="kids-grid">' + kids.map(k => `<div class="kid-card"><span class="kid-star">★</span><b>${esc(k.name)}</b><span class="kid-total">${ar(Math.max(0,+k.stars || 0))}<small>نجمة</small></span></div>`).join('') + '</div>' : '');
+  softHTML(document.getElementById('v2-kids'), kids.length ? '<h2>نجوم أبطال عائلتي</h2><div class="kids-grid">' + kids.map(k => `<div class="kid-card"><span class="kid-star">★</span><b>${esc(k.name)}</b><span class="kid-total">${ar(Math.max(0,+k.stars || 0))}<small>نجمة</small></span></div>`).join('') + '</div>' : '');
   const all = GUEST() || !cardOn('series') ? [] : seriesItems();
   const page=all.length ? Math.floor(Date.now()/15000)%Math.ceil(all.length/2) : 0;
   const shown=all.slice(page*2,page*2+2);
   document.querySelector('.v2-series').style.visibility = GUEST() || !cardOn('series') ? 'hidden' : '';
-  setHTML(document.getElementById('v2-series'), shown.length ? shown.map(it=> `<div class="v2-show"><div class="series-poster">${it.poster ? `<img src="${esc(it.poster)}" alt="" onerror="this.style.display='none'">` : '🎬'}</div><div class="series-copy"><b>${esc(it.name)}</b>${whenText(it,Date.now())}</div></div>`).join('') : '<span class="sub">لا توجد تحديثات حالياً</span>');
+  softHTML(document.getElementById('v2-series'), shown.length ? shown.map(it=> `<div class="v2-show"><div class="series-poster">${it.poster ? `<img src="${esc(it.poster)}" alt="" onerror="this.style.display='none'">` : '🎬'}</div><div class="series-copy"><b>${esc(it.name)}</b>${whenText(it,Date.now())}</div></div>`).join('') : '<span class="sub">لا توجد تحديثات حالياً</span>');
 }
 function boot(){
   if(_Q.get('home') === '1') document.documentElement.classList.add('home-dashboard');
@@ -3157,6 +3162,7 @@ function boot(){
   setInterval(() => applyBackground(false), 60*1000);
   document.querySelector('.clock-face').insertAdjacentHTML('afterbegin', watchSVG());
   fitWatch(); addEventListener('resize', fitWatch);
+  if(window.ResizeObserver) new ResizeObserver(fitWatch).observe(document.querySelector('.clockwrap'));
   tickClock(); tickDates(); tickRamadan(); buildToday();
   if(CONFIG.panel === 'none') document.querySelector('.week').style.display = 'none';
   else if(CONFIG.panel !== 'shows') renderPanel(false);   // its own data arrives with prayers, weather, matches

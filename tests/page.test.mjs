@@ -82,7 +82,7 @@ const EXPECT = { prayers: [6, 'مواقيت اليوم'], forecast: [2, 'الط�
                  verse: [2, null], shows: [1, 'هذا الأسبوع'] };
 for (const [panel, [rows, title]] of Object.entries(EXPECT)) {
   const { p, ctx, errors } = await open('tv.html', 'teams=136013&panel=' + panel);
-  if (panel === 'verse') await p.evaluate(() => { window.adhkarTime = () => null; CARD_TURN = 0; renderPanel(false); });
+  if (panel === 'verse') await p.evaluate(() => { window.adhkarTime = () => null; window.summaryTime = () => false; CARD_TURN = 0; renderPanel(false); });
   if (SAMPLE[panel]) await p.evaluate(`(${SAMPLE[panel]})(); renderPanel(false);`);
   const r = await p.evaluate(() => ({ n: document.querySelectorAll('#week-list li').length,
     hd: document.getElementById('week-hd').textContent, shown: getComputedStyle(document.querySelector('.week')).display !== 'none' }));
@@ -116,11 +116,11 @@ for (const [width, height] of [[1920, 1080], [1280, 720], [960, 540]]) {
       const c = card.getBoundingClientRect(), clock = document.querySelector('.clockwrap').getBoundingClientRect();
       const bar = document.querySelector('.bottom').getBoundingClientRect();
       tallest = Math.max(tallest, c.height);
-      const top = document.querySelector('.top').getBoundingClientRect();
-      // a card beside the clock, not a page: clear of the top line, the clock and the bottom bar, at most 47% high,
+      const alerts = document.querySelector('.alerts').getBoundingClientRect();
+      // the card on the left half, as drawn: on screen, clear of the clock, above the alerts row and the bottom bar,
       // and its text inside it (long ones are shrunk by fitCard)
       const ulr = document.getElementById('week-list'), over = ulr.scrollHeight > ulr.clientHeight + 2;
-      if (c.top < top.bottom || c.bottom > bar.top - 4 || c.right > clock.left - 4 || c.height > 0.47 * innerHeight || over)
+      if (c.top < 0 || c.bottom > alerts.top - 2 || c.bottom > bar.top - 4 || c.right > clock.left - 4 || over)
         bad.push(`${Math.round(c.top)}-${Math.round(c.bottom)}/${Math.round(bar.top)} ` + card.querySelector('.quote').textContent.slice(0, 40));
     }
     return { days, bad, tallest: Math.round(tallest) };
@@ -166,6 +166,44 @@ for (const panel of ['prayers', 'verse', 'shows']) {
   await ctx.close();
 }
 
+// ---- every box keeps its content inside it, as drawn: sample weather, series, a game, alerts, long names
+for (const [width, height] of [[1920, 1080], [1280, 720], [960, 540]]) {
+  const { p, ctx, errors } = await open('tv.html', 'teams=136013', { width, height });
+  await p.evaluate(() => {
+    const now = Date.now(), day = 864e5;
+    CTRL = { screens: { list: [{ id: 'k1', name: 'سارة', kid: true, stars: 12 }, { id: 'k2', name: 'عبدالرحمن', kid: true, stars: 128 },
+      { id: 'k3', name: 'نورة', kid: true, stars: 15 }] },
+      family: [{ name: 'زواج خالد بن عبدالله', date: new Date(now + 9 * day).toISOString().slice(0, 10), kind: 'wedding' }] };
+    FORECAST = [0, 1, 2, 3, 4].map(i => ({ date: new Date(now + i * day).toISOString().slice(0, 10), code: 2, hi: 37 - i, lo: 24 - i }));
+    SERIES = { tvm1: { name: 'المؤسس عثمان الموسم السادس', kind: 'مسلسل', next: { t: now + 3 * day } },
+               tvm2: { name: 'Dune: Part Three', kind: 'فيلم', movie: true, next: { t: now + 40 * day, dateOnly: true } } };
+    CTRL.series = [{ id: '1' }, { id: '2' }];
+    TODAY_GAMES = [{ t: now - 2 * 36e5, ev: { idEvent: 'x', strHomeTeam: 'Al-Hilal', strAwayTeam: 'Al-Nassr', idHomeTeam: '1', idAwayTeam: '2',
+      strLeague: 'دوري روشن السعودي', intHomeScore: 2, intAwayScore: 1, strStatus: 'FT', strTimestamp: new Date(now - 2 * 36e5).toISOString() } }];
+    FAM_CACHE.key = ''; tickFamily(); renderV2(); renderMatches(false); renderAlerts(); tickDates();
+  });
+  await p.waitForTimeout(1600);   // the new content has risen into place
+  const bad = await p.evaluate(() => {
+    const out = [];
+    document.querySelectorAll('.week,.v2-prayers,.v2-weather,.dates>div,.clockwrap,.v2-kids,.alerts,.bottom>*').forEach(box => {
+      const B = box.getBoundingClientRect();
+      if (getComputedStyle(box).display === 'none' || !B.width) return;
+      box.querySelectorAll('*').forEach(e => {
+        const cs = getComputedStyle(e), R = e.getBoundingClientRect();
+        if (cs.display === 'none' || cs.visibility === 'hidden' || (e.closest('svg') && e.tagName !== 'svg') || !R.width || !R.height) return;
+        if (R.left < B.left - 1 || R.right > B.right + 1 || R.top < B.top - 1 || R.bottom > B.bottom + 1)
+          out.push((box.id || box.className) + ' › ' + (e.textContent || e.tagName).trim().slice(0, 25));
+      });
+    });
+    return out;
+  });
+  check(`${width}x${height}: every box keeps its content inside it`, !errors.length && !bad.length, bad.slice(0, 5).join(' | ') + errors.join('; '));
+  const w = await p.evaluate(() => { const f = document.querySelector('.clock-face').getBoundingClientRect(), b = document.querySelector('.clockwrap').getBoundingClientRect();
+    return { round: Math.abs(f.width - f.height) < 2, inside: f.left >= b.left - 1 && f.right <= b.right + 1 && f.top >= b.top - 1 && f.bottom <= b.bottom + 1, d: Math.round(f.width) }; });
+  check(`${width}x${height}: the watch is round and inside its box`, w.round && w.inside && w.d > 0.2 * height, JSON.stringify(w));
+  await ctx.close();
+}
+
 // ---- a finished game's score stays up for a day, even when the API has already moved on
 {
   const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
@@ -173,6 +211,8 @@ for (const panel of ['prayers', 'verse', 'shows']) {
   const p = await ctx.newPage();
   await p.goto(page('tv.html') + '#teams=136013&panel=verse');
   await p.waitForTimeout(800);
+  // the scoreboard: home name, goals, away name, goals
+  const score = t => /الهلال\D*٢\D*النصر\D*١/.test(t);
   const slot = () => p.evaluate(() => matchCard().join(' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
   const game = (id, hoursAgo, score, status) => `({idEvent:'${id}', strHomeTeam:'Al-Hilal', strAwayTeam:'Al-Nassr',
     strTimestamp:new Date(Date.now() - ${hoursAgo} * 36e5).toISOString(), intHomeScore:${score ? score[0] : null},
@@ -180,22 +220,22 @@ for (const panel of ['prayers', 'verse', 'shows']) {
 
   await p.evaluate(`MATCHES['136013'] = ${game('g1', 1.8, [2, 1], 'FT')}; renderMatches();`);
   let t = await slot();
-  check('whistle blown: final score at once, not «مباشر»', t.includes('انتهت') && t.includes('٢ - ١') && !t.includes('مباشر'), t);
+  check('whistle blown: final score at once, not «مباشر»', t.includes('انتهت') && score(t) && !t.includes('مباشر'), t);
 
   await p.evaluate(`keepResult('136013', MATCHES['136013']); MATCHES['136013'] = ${game('g2', -72, null, 'NS')};
                     RESULTS = {}; renderMatches();`);
   t = await slot();
-  check('API moved to the next fixture: score still shown', t.includes('انتهت') && t.includes('٢ - ١'), t);
+  check('API moved to the next fixture: score still shown', t.includes('انتهت') && score(t), t);
 
   await p.reload();
   await p.waitForTimeout(800);
   await p.evaluate(`MATCHES['136013'] = ${game('g2', -72, null, 'NS')}; renderMatches();`);
   t = await slot();
-  check('after a restart the same day: score still shown', t.includes('٢ - ١'), t);
+  check('after a restart the same day: score still shown', score(t), t);
 
   await p.evaluate(`KEPT['136013'] = [${game('g1', 27, [2, 1], 'FT')}]; renderMatches();`);
   t = await slot();
-  check('a day later: score gone, next fixture shown', !t.includes('٢ - ١') && t.includes('القادمة'), t);
+  check('a day later: score gone, next fixture shown', !score(t) && t.includes('متبقي'), t);
   await ctx.close();
 }
 
