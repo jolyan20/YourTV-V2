@@ -2,6 +2,17 @@
 
 The photos are not credited on screen; they are credited here.
 
+## The watch (`assets/watch/`)
+
+The face of the Makkah Royal Clock, made from three photographs by **King Eliot** on Wikimedia Commons, under
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/):
+[Abraj al bait Clock 1](https://commons.wikimedia.org/wiki/File:Abraj_al_bait_Clock_1.jpg),
+[Clock 2](https://commons.wikimedia.org/wiki/File:Abraj_al_bait_Clock_2.jpg) and
+[Clock 3](https://commons.wikimedia.org/wiki/File:Abraj_al_bait_Clock_3.jpg).
+Changed: the face straightened to a square, the photographed hands removed by combining the three, the dial
+evened out; `makkah-night.jpg` recolours it as the tower is lit at night. Both images are shared under the same
+licence, CC BY-SA 4.0.
+
 ## Bundled with the apps (offline fallback)
 
 Five of the hosted photos below, copied into `assets/backgrounds/`:

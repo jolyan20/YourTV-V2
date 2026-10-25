@@ -219,6 +219,11 @@ def main():
         for token, font in FONTS.items():
             page = page.replace(token, data_uri(ROOT / "assets/fonts" / font, "font/woff2") if inline
                                 else REPO + "assets/fonts/" + font)
+        # the Makkah clock's face by day and lit at night (assets/watch, from Wikimedia Commons: docs/PHOTO-CREDITS.md);
+        # the light page takes them from the app's own files, or GitHub when it is not in the app
+        for token, f in (("__WATCH_DAY__", "makkah-day.jpg"), ("__WATCH_NIGHT__", "makkah-night.jpg")):
+            page = page.replace(token, data_uri(ROOT / "assets/watch" / f, "image/jpeg") if inline
+                                else f"file:///android_asset/watch/{f}\" onerror=\"this.onerror=null;this.src='{REPO}assets/watch/{f}'")
         entries = []
         captions = json.loads((ROOT / ".github/tools/captions-ar.json").read_text(encoding="utf-8"))
         for bg in bgs:
