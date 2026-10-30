@@ -214,3 +214,13 @@ From the [Saudi Photos Hub](https://cc.spa.gov.sa) of the Saudi Press Agency (و
 | `photos/spa-76262.jpg` | الضباب يغطي سفوح جبال الباحة | [واس](https://cc.spa.gov.sa/ar/news/76260) |
 | `photos/spa-28740.jpg` | غطاء نباتي بالقرب من جبال أجا وسلمى في حائل | [واس](https://cc.spa.gov.sa/ar/news/28738) |
 | `photos/spa-58139.jpg` | قرية "آل منجم" التراثية بمنطقة نجران | [واس](https://cc.spa.gov.sa/ar/news/58137) |
+| `photos/spa-102158.jpg` | الضباب يزيّن مرتفعات الباحة | [واس](https://cc.spa.gov.sa/ar/news/102156) |
+| `photos/spa-102096.jpg` | قمم جبلية بجازان | [واس](https://cc.spa.gov.sa/ar/news/102094) |
+| `photos/spa-102118.jpg` | أحد السدود في منطقة الباحة | [واس](https://cc.spa.gov.sa/ar/news/102116) |
+| `photos/spa-91735.jpg` | أبراج في مدينة الرياض عاصمة السعودية لحظة غروب الشمس | [واس](https://cc.spa.gov.sa/ar/news/91730) |
+| `photos/spa-76274.jpg` | السحب ترسم لوحة جمالية على جبال ورمال تبوك | [واس](https://cc.spa.gov.sa/ar/news/76272) |
+| `photos/spa-27454.jpg` | أخشاب الزان والعرعر الطائفي تزيّن قصور الطائف | [واس](https://cc.spa.gov.sa/ar/news/27452) |
+| `photos/spa-85735.jpg` | الطبيعة في مرتفعات وجبال جازان | [واس](https://cc.spa.gov.sa/ar/news/85730) |
+| `photos/spa-101111.jpg` | بوابة جدة التاريخية | [واس](https://cc.spa.gov.sa/ar/news/101108) |
+| `photos/spa-84304.jpg` | الضباب يكسو قمم جبال عسير | [واس](https://cc.spa.gov.sa/ar/news/84302) |
+| `photos/spa-28182.jpg` | نقوش أثرية في مدينة جبة التراثية بمنطقة حائل | [واس](https://cc.spa.gov.sa/ar/news/28180) |
