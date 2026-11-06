@@ -224,3 +224,13 @@ From the [Saudi Photos Hub](https://cc.spa.gov.sa) of the Saudi Press Agency (و
 | `photos/spa-101111.jpg` | بوابة جدة التاريخية | [واس](https://cc.spa.gov.sa/ar/news/101108) |
 | `photos/spa-84304.jpg` | الضباب يكسو قمم جبال عسير | [واس](https://cc.spa.gov.sa/ar/news/84302) |
 | `photos/spa-28182.jpg` | نقوش أثرية في مدينة جبة التراثية بمنطقة حائل | [واس](https://cc.spa.gov.sa/ar/news/28180) |
+| `photos/spa-91653.jpg` | قصر الكوت بمحافظة الخرج جنوب شرقي العاصمة السعودية الرياض | [واس](https://cc.spa.gov.sa/ar/news/91648) |
+| `photos/spa-84573.jpg` | من كرنفال التمور ببريدة وسط | [واس](https://cc.spa.gov.sa/ar/news/84571) |
+| `photos/spa-62213.jpg` | ظهور القمر من بين مرتفعات منطقة تبوك | [واس](https://cc.spa.gov.sa/ar/news/62211) |
+| `photos/spa-60113.jpg` | التاريخ وجمال التضاريس والطبيعة في العلا | [واس](https://cc.spa.gov.sa/ar/news/60111) |
+| `photos/spa-80173.jpg` | أحد متنزهات منطقة عسير | [واس](https://cc.spa.gov.sa/ar/news/80171) |
+| `photos/spa-50158.jpg` | مبانٍ طينية في منطقة نجران | [واس](https://cc.spa.gov.sa/ar/news/50156) |
+| `photos/spa-84336.jpg` | أشجار المانجروف تزيّن شواطئ جازان | [واس](https://cc.spa.gov.sa/ar/news/84334) |
+| `photos/spa-91534.jpg` | توربين لتوليد الطاقة في محافظة حريملاء شمال غربي العاصمة السعودية الرياض | [واس](https://cc.spa.gov.sa/ar/news/91529) |
+| `photos/spa-84320.jpg` | كائنات بحرية كبيرة في المياه الإقليمية للسعودية | [واس](https://cc.spa.gov.sa/ar/news/84318) |
+| `photos/spa-57191.jpg` | واجهة بحرية بمنطقة تبوك شمال غربي المملكة العربية السعودية | [واس](https://cc.spa.gov.sa/ar/news/57189) |
