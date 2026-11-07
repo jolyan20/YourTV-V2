@@ -3057,13 +3057,13 @@ function renderWeekPage(animate){
   for(let i = 0; i < Math.min(WEEK_ROWS, WEEK_POOL.length); i++){
     rows.push(WEEK_POOL[(start + i) % WEEK_POOL.length]);
   }
-  ul.innerHTML = rows.map(o=>{
+  ul.innerHTML = latn(rows.map(o=>{
     const dt = o.date ? IDF(GREG,{timeZone:CONFIG.timezone,weekday:'short'}).format(new Date(o.date+'T12:00:00Z')) : '';
     return `<li><span>${esc(o.name)}</span>`
          + (o.ep?`<span class="ep">${ar(o.ep)}</span>`:'')
          + (o.rating ? `<span class="rt">${ar(o.rating.toFixed(1)).replace('.','٫')}</span>` : '')
          + (dt?`<span class="dt">${dt}</span>`:'') + '</li>';
-  }).join('');
+  }).join(''));
   ul.classList.remove('flip');
   if(animate){ void ul.offsetWidth; ul.classList.add('flip'); }
 }
@@ -3381,14 +3381,14 @@ function renderPanel(animate){
   const ul = document.getElementById('week-list'), hd = document.getElementById('week-hd');
   const P = CONFIG.panel;
   ul.classList.remove('match-grid','fx-list');
-  if(ROTATES()){ const q = rotatingCard(); setCardTitle(hd, q.title); ul.innerHTML = q.rows.join(''); ul.classList.toggle('fx-list',!!ul.querySelector('.fx')); if(!ul.classList.contains('fx-list'))fitCard(ul); return; }
+  if(ROTATES()){ const q = rotatingCard(); setCardTitle(hd, q.title); ul.innerHTML = latn(q.rows.join('')); ul.classList.toggle('fx-list',!!ul.querySelector('.fx')); if(!ul.classList.contains('fx-list'))fitCard(ul); return; }
   if(P === 'shows'){ renderWeekPage(animate); return; }
   let rows = [];
   if(P === 'prayers') rows = prayerRows();
   else if(P === 'forecast') rows = forecastRows();
   else if(P === 'matches'){rows=matchCard();ul.classList.add('fx-list');}
-  else if(P === 'home'){ setCardTitle(hd, 'الصلاة القادمة'); ul.innerHTML = homeRows().join(''); return; }
-  else if(P === 'verse'){ const q = CONFIG.widget ? quoteOfDay() : rotatingCard(); setCardTitle(hd, q.title); rows = q.rows; ul.innerHTML = rows.join(''); ul.classList.toggle('fx-list',!!ul.querySelector('.fx')); if(!ul.classList.contains('fx-list'))fitCard(ul); return; }
+  else if(P === 'home'){ setCardTitle(hd, 'الصلاة القادمة'); ul.innerHTML = latn(homeRows().join('')); return; }
+  else if(P === 'verse'){ const q = CONFIG.widget ? quoteOfDay() : rotatingCard(); setCardTitle(hd, q.title); rows = q.rows; ul.innerHTML = latn(rows.join('')); ul.classList.toggle('fx-list',!!ul.querySelector('.fx')); if(!ul.classList.contains('fx-list'))fitCard(ul); return; }
   if(PANEL_TITLE[P]) setCardTitle(hd, PANEL_TITLE[P]);
   if(!rows.length){
     ul.classList.remove('flip');
@@ -3399,7 +3399,7 @@ function renderPanel(animate){
     const start = (LIST_PAGE * WEEK_ROWS) % rows.length;
     rows = Array.from({length: WEEK_ROWS}, (_, i) => rows[(start + i) % rows.length]);
   }
-  ul.innerHTML = rows.join('');
+  ul.innerHTML = latn(rows.join(''));
   ul.classList.remove('flip');
   if(animate){ void ul.offsetWidth; ul.classList.add('flip'); }
 }
@@ -3687,7 +3687,7 @@ function saveSnap(){
 function restoreSnap(){
   try{
     const v = JSON.parse(localStorage.getItem(SNAP_KEY) || 'null');
-    if(v) SNAP_SEL.forEach((q, i) => { const el = document.querySelector(q); if(el && v[i]) el.innerHTML = v[i]; });
+    if(v) SNAP_SEL.forEach((q, i) => { const el = document.querySelector(q); if(el && v[i]) el.innerHTML = latn(v[i]); });
   }catch(e){}
 }
 
