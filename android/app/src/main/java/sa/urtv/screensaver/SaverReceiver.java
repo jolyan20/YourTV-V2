@@ -77,6 +77,21 @@ public class SaverReceiver extends BroadcastReceiver {
                 setResultData("sync: " + peers + (id != null ? " as " + id : ""));
                 return;
             }
+            case "sa.yourtv.v2.screensaver.NAME": {   // --es name <this TV's name on the phone page, e.g. الصالة>
+                String name = i.getStringExtra("name");
+                if (name == null || name.trim().isEmpty() || name.trim().length() > 30) { setResultData("error: --es name (1 to 30)"); return; }
+                ControlStore.prefs(c).edit().putString("tvName", name.trim()).apply();
+                ControlSync.tell(c, "pull=1");   // the other TVs learn it now
+                setResultData("name: " + name.trim());
+                return;
+            }
+            case "sa.yourtv.v2.screensaver.TAKEFILE": {   // --es name adhan-video-main: that file from the paired TV
+                final String name = String.valueOf(i.getStringExtra("name"));
+                final PendingResult pending = goAsync();
+                final Context app = c.getApplicationContext();
+                new Thread(() -> { pending.setResultData(ControlSync.takeFile(app, name)); pending.finish(); }).start();
+                return;
+            }
             case "sa.yourtv.v2.screensaver.TEST": {   // --es what whistle|chime|soft|kickoff|hour|adhan|weather|friday|series|overlay
                 String what = String.valueOf(i.getStringExtra("what"));
                 if (!what.matches("[a-z]{3,12}")) { setResultData("error: --es what"); return; }

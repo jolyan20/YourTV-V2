@@ -98,7 +98,10 @@ final class ControlSync {
     }
 
     /** a plain GET over a socket (the app allows no other clear-text connections), home network or Tailscale only */
-    static byte[] fetch(String host, String key, String path) throws Exception {
+    static byte[] fetch(String host, String key, String path) throws Exception { return fetch(host, key, path, Uploads.MAX); }
+
+    /** …up to `max` bytes; a body cut short of its Content-Length is refused, never kept half */
+    static byte[] fetch(String host, String key, String path, int max) throws Exception {
         try (Socket s = new Socket()) {
             s.connect(new InetSocketAddress(host, ControlStore.PORT), 4000);
             s.setSoTimeout(8000);
@@ -110,13 +113,36 @@ final class ControlSync {
             ByteArrayOutputStream b = new ByteArrayOutputStream();
             byte[] buf = new byte[16384];
             int n;
-            while ((n = in.read(buf)) > 0 && b.size() < Uploads.MAX + 65536) b.write(buf, 0, n);
+            while ((n = in.read(buf)) > 0 && b.size() < max + 65536) b.write(buf, 0, n);
             byte[] all = b.toByteArray();
             String head = new String(all, 0, Math.min(all.length, 16), StandardCharsets.ISO_8859_1);
             if (!head.startsWith("HTTP/1.1 200") && !head.startsWith("HTTP/1.0 200")) throw new Exception("status");
             for (int i = 0; i + 3 < all.length; i++)
-                if (all[i] == 13 && all[i + 1] == 10 && all[i + 2] == 13 && all[i + 3] == 10) return java.util.Arrays.copyOfRange(all, i + 4, all.length);
+                if (all[i] == 13 && all[i + 1] == 10 && all[i + 2] == 13 && all[i + 3] == 10) {
+                    java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?i)content-length:\\s*(\\d+)")
+                        .matcher(new String(all, 0, i, StandardCharsets.ISO_8859_1));
+                    if (m.find() && Long.parseLong(m.group(1)) != all.length - i - 4) throw new Exception("short");
+                    return java.util.Arrays.copyOfRange(all, i + 4, all.length);
+                }
             throw new Exception("head");
         }
+    }
+
+    /** one file from another TV (the adhan video, which the minute's sync leaves out for its size), by the sync key */
+    static String takeFile(Context c, String name) {
+        String key = ControlStore.prefs(c).getString("syncKey", ""), peers = ControlStore.prefs(c).getString("syncPeers", "");
+        if (key.length() < 32 || peers.isEmpty()) return "error: not paired with another TV";
+        if (!Uploads.okName(name)) return "error: name";
+        for (String peer : peers.split(",")) {
+            peer = peer.trim();
+            if (!peer.matches("[0-9.]{7,15}")) continue;
+            try {
+                byte[] f = fetch(peer, key, "/api/syncfile?name=" + name, Uploads.VIDEO_MAX);
+                if (f.length == 0) continue;
+                Uploads.save(c, name, f, System.currentTimeMillis(), name.startsWith("adhan-video-") ? "video/mp4" : "audio/mpeg");
+                return "took " + name + " from " + peer + " (" + f.length + " bytes)";
+            } catch (Exception ignored) { }   // that address did not answer, or the file is not there: the next
+        }
+        return "error: no TV answered with " + name;
     }
 }
