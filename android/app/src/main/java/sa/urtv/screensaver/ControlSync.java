@@ -133,16 +133,38 @@ final class ControlSync {
         String key = ControlStore.prefs(c).getString("syncKey", ""), peers = ControlStore.prefs(c).getString("syncPeers", "");
         if (key.length() < 32 || peers.isEmpty()) return "error: not paired with another TV";
         if (!Uploads.okName(name)) return "error: name";
+        StringBuilder why = new StringBuilder();
         for (String peer : peers.split(",")) {
             peer = peer.trim();
             if (!peer.matches("[0-9.]{7,15}")) continue;
-            try {
-                byte[] f = fetch(peer, key, "/api/syncfile?name=" + name, Uploads.VIDEO_MAX);
-                if (f.length == 0) continue;
-                Uploads.save(c, name, f, System.currentTimeMillis(), name.startsWith("adhan-video-") ? "video/mp4" : "audio/mpeg");
-                return "took " + name + " from " + peer + " (" + f.length + " bytes)";
-            } catch (Exception ignored) { }   // that address did not answer, or the file is not there: the next
+            // straight to disk as it comes (a video is tens of MB: never all of it in memory on a weak TV)
+            try (Socket s = new Socket()) {
+                s.connect(new InetSocketAddress(peer, ControlStore.PORT), 4000);
+                s.setSoTimeout(20000);
+                OutputStream out = s.getOutputStream();
+                out.write(("GET /api/syncfile?name=" + name + " HTTP/1.0\r\nHost: " + peer + "\r\nX-Sync: " + key + "\r\nConnection: close\r\n\r\n")
+                    .getBytes(StandardCharsets.UTF_8));
+                out.flush();
+                InputStream in = new java.io.BufferedInputStream(s.getInputStream());
+                ByteArrayOutputStream h = new ByteArrayOutputStream();
+                int b;
+                while ((b = in.read()) >= 0 && h.size() < 8192) {
+                    h.write(b);
+                    byte[] x = h.toByteArray(); int k = x.length;
+                    if (k >= 4 && x[k - 4] == 13 && x[k - 3] == 10 && x[k - 2] == 13 && x[k - 1] == 10) break;
+                }
+                String head = new String(h.toByteArray(), StandardCharsets.ISO_8859_1);
+                if (!head.matches("(?s)HTTP/1\\.[01] 200.*")) { why.append(peer).append(": ").append(head.split("\r\n")[0]).append("; "); continue; }
+                java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?i)content-length:\\s*(\\d+)").matcher(head);
+                if (!m.find()) { why.append(peer).append(": no length; "); continue; }
+                long size = Long.parseLong(m.group(1));
+                if (size <= 0 || size > Uploads.VIDEO_MAX) { why.append(peer).append(": size ").append(size).append("; "); continue; }
+                Uploads.saveStream(c, name, in, (int) size, System.currentTimeMillis(), name.startsWith("adhan-video-") ? "video/mp4" : "audio/mpeg");
+                return "took " + name + " from " + peer + " (" + size + " bytes)";
+            } catch (Exception e) {
+                why.append(peer).append(": ").append(e.getClass().getSimpleName()).append(' ').append(e.getMessage()).append("; ");
+            }
         }
-        return "error: no TV answered with " + name;
+        return "error: " + (why.length() == 0 ? "no paired address" : why.toString());
     }
 }

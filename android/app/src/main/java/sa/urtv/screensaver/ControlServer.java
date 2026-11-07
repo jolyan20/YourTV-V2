@@ -219,9 +219,9 @@ final class ControlServer implements Runnable {
             if ("GET".equals(method) && "/api/syncfile".equals(path)) {   // the sister TV takes a file (ControlSync)
                 if (!ControlSync.keyMatches(app, get(h, "x-sync", ""))) { failed(who); reply(s, 401, "text/plain", "sync", false); return; }
                 String name = query.startsWith("name=") ? query.substring(5) : "";
-                byte[] f = Uploads.okName(name) ? Uploads.read(app, name) : null;
-                if (f == null) { reply(s, 404, "text/plain", "none", false); return; }
-                replyBytes(s, Uploads.type(app, name), f); return;
+                java.io.File f = Uploads.okName(name) ? Uploads.file(app, name) : null;   // streamed: a video never all in memory
+                if (f == null || !f.isFile()) { reply(s, 404, "text/plain", "none", false); return; }
+                replyFile(s, Uploads.type(app, name), f, ""); return;
             }
             if ("GET".equals(method) && "/api/peer".equals(path)) {   // another TV passing on a test, the Quran or "take it now"
                 if (!ControlSync.keyMatches(app, get(h, "x-sync", ""))) { failed(who); reply(s, 401, "text/plain", "sync", false); return; }
