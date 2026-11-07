@@ -1087,7 +1087,7 @@ public class MainActivity extends Activity {
     // The home screen is the screensaver's screen, whole. The apps wait under it: Down (or OK) brings the header
     // and the favourites up from the bottom, Up from them or Back puts them away, and so do 20 s without a key.
     private View nativeHeader, dockBand;
-    private static final float HEADER_REST = 0.45f;   // the buttons bar over the screen, faint until Up or Down
+    private static final float HEADER_REST = 0f;   // the buttons bar: hidden over the screen until Up (or Down) shows it
     private static final android.net.Uri SAVER_CONFIG = android.net.Uri.parse("content://sa.yourtv.v2.screensaver.config");
     private TextView quranPill;
     private boolean appsShown = true;

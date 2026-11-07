@@ -98,12 +98,17 @@ if [ "$what" = launcher ] || [ "$what" = all ]; then
     | "$PY" -I optimize/tv.py --batch
   echo "Safety switch armed: the stock home comes back by itself in 5 minutes unless the new home works."
 
-  # 3. Switch. The setup app (setupwraith) stays on: on Google TV sets (TCL) it holds the cast credentials, so
-  # casting and the Google Home remote stop working without it (found by tshi-dev/UrTV); our home is still asked
-  # to be Home before and after the stock home goes, and step 4 checks it is.
+  # 3. Switch. The setup app (setupwraith) stays on only on Google's own devices, where it holds the cast credentials
+  # (found by tshi-dev/UrTV). Elsewhere it goes first, then the stock home (this order avoided the black screen): on
+  # a TCL its RecoveryActivity takes Home if it is left on, while casting (mediashell) works without it there.
+  if [ "$("$PY" -I optimize/tv.py "getprop ro.product.manufacturer" | tr -d '\r')" = Google ]; then
+    WRAITH="pm enable com.google.android.tungsten.setupwraith"
+  else
+    WRAITH="pm disable-user --user 0 com.google.android.tungsten.setupwraith"
+  fi
   printf '%s\n' \
     "cmd package set-home-activity --user 0 sa.yourtv.v2.home/.MainActivity" \
-    "pm enable com.google.android.tungsten.setupwraith" \
+    "$WRAITH" \
     "pm disable-user --user 0 ${STOCK%%/*}" \
     "cmd package set-home-activity --user 0 sa.yourtv.v2.home/.MainActivity" \
     "am force-stop com.android.tv.settings" \
