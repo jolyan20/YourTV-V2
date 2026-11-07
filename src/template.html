@@ -678,6 +678,9 @@ html:not(.widget) .dates{grid-column:7/10;grid-row:3;display:grid;grid-template-
 html:not(.widget) .dates>div:not(.rule){display:flex;align-items:center;gap:.3em;min-width:0;padding:0 .9vw;overflow:hidden;white-space:nowrap;
   font-size:1.15vw;line-height:1.3;color:var(--sand);background:#07181099;border:1px solid #dcb86f33;border-radius:8px}
 html:not(.widget) .dates #day-name{color:var(--gold);font-weight:500}
+html:not(.widget) .dates .seasons{font-size:1vw;color:var(--sand)}
+html:not(.widget) .dates .seasons:empty{visibility:hidden}
+html:not(.widget) .dates .seasons b{color:var(--gold);font-weight:500}
 html:not(.widget) .dates .t24 b{direction:ltr;unicode-bidi:isolate;font-family:'ThmanyahDisplay','Thmanyah',serif;font-weight:700;
   font-size:1.35vw;letter-spacing:.04em;color:#FFF3D6;font-variant-numeric:tabular-nums}
 html:not(.widget) .clockwrap{grid-column:10/13;padding:0;overflow:hidden;justify-self:stretch;align-self:stretch}
@@ -797,13 +800,15 @@ html:not(.widget) .clockwrap{overflow:visible}
 @keyframes beamPulse{0%,100%{opacity:.3}50%{opacity:1}}
 @keyframes beamSpin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.clock-face.beam::before,.clock-face.beam::after{animation:none;opacity:.8}}
-/* a larger watch, and the four date boxes in one rhythm: the day large and gold, the Hijri bright, the other two quieter */
+/* a larger watch, and the date boxes in one rhythm: the day large and gold, the Hijri bright, the other two quieter,
+   then the official calendar's seasons, quieter still */
 html:not(.widget) .stage{grid-template-rows:9fr 10fr 34fr 7fr 29fr}
-html:not(.widget) .dates{grid-column:7/10;grid-template-rows:1.15fr 1fr 1fr 1fr;gap:.9vh}
+html:not(.widget) .dates{grid-column:7/10;grid-template-rows:1.15fr 1fr 1fr 1fr .9fr;gap:.9vh}
 html:not(.widget) .dates>div:not(.rule){justify-content:center;padding:0 .8vw;font-size:1.2vw;line-height:1.35}
 html:not(.widget) .dates #day-name{font-family:'ThmanyahDisplay','Thmanyah',serif;font-weight:700;font-size:1.75vw;color:var(--gold);letter-spacing:.02em}
 html:not(.widget) .dates .hijri{font-weight:500;color:#FFF3D6}
 html:not(.widget) .dates .greg,html:not(.widget) .dates .shamsi{font-size:1.08vw;color:#E2D8C2}
+html:not(.widget) .dates .seasons{font-size:1vw;color:#CFC6B2}
 html:not(.widget) .dates .mchip{font-size:.62em}
 /* R14: the series beside their posters: the poster large on the right, then the name, «الجزء · الحلقة», the days
    left and the dates beside it, in the bottom boxes' rows */
@@ -852,6 +857,7 @@ html:not(.widget) .v2-show .series-copy .release-date{display:none}
       <div class="hijri" id="hijri">—</div>
       <div class="greg" id="greg">—</div>
       <div class="shamsi" id="shamsi">—</div>
+      <div class="seasons" id="seasons"></div>
       <div class="rule"></div>
     </div>
 
@@ -1171,11 +1177,37 @@ function dateLine(cal, now, showWeekday = true){
   return `${showWeekday ? esc(parts.weekday) + ' ' : ''}${num(parts.day)} ${esc(parts.month)} <span class="mchip">${ar(mo)}</span> ${num(parts.year)}`;
 }
 function tickDates(){
-  const now = new Date();
+  const now = new Date(), u = umqToday();
   softHTML(document.getElementById('day-name'), esc(IDF(GREG,{timeZone:CONFIG.timezone,weekday:'long'}).format(now)));
-  try{ softHTML(document.getElementById('hijri'), dateLine('islamic-umalqura', now, false) + ' هـ'); }catch(e){}
+  try{ softHTML(document.getElementById('hijri'), u
+    ? `${ar(u.hijriDate.day)} ${esc(u.hijriDate.nameAr)} <span class="mchip">${ar(u.hijriDate.month)}</span> ${ar(u.hijriDate.year)} هـ`
+    : dateLine('islamic-umalqura', now, false) + ' هـ'); }catch(e){}
   try{ softHTML(document.getElementById('greg'), dateLine('gregory', now, false) + ' م'); }catch(e){}
-  try{ softHTML(document.getElementById('shamsi'), shamsiLine(now)); }catch(e){}
+  try{ softHTML(document.getElementById('shamsi'), u && BURJ.includes(u.solarHijriDate.nameAr)
+    ? `${ar(u.solarHijriDate.day)} ${esc(u.solarHijriDate.nameAr)} <span class="mchip">${ar(BURJ.indexOf(u.solarHijriDate.nameAr) + 1)}</span> ${ar(u.solarHijriDate.year)} هـ.ش`
+    : shamsiLine(now)); }catch(e){}
+  // the star season (anwa') and the farmers' season, with the day of each: only from the official calendar
+  const se = u && u.seasons;
+  softHTML(document.getElementById('seasons'), se && se.starSeasonName
+    ? `<b>${esc(se.starSeasonName)}</b> ${ar(se.starSeasonDay)} · <b>${esc(se.farmerSeasonName)}</b> ${ar(se.farmerSeasonDay)}` : '');
+}
+// ---------- the official Umm al-Qura calendar (umqserv.kacst.gov.sa, behind ummulqura.org.sa): the day's Hijri
+// and solar Hijri dates, the star and farmers' seasons and this city's prayer times, one call a day, kept on the
+// device; the local calculation stands in when it does not answer
+let UMQ_DAY = (() => { try{ return JSON.parse(localStorage.getItem('umqDay') || 'null'); }catch(e){ return null; } })();
+const umqKey = () => todayKey() + '|' + CONFIG.latitude + ',' + CONFIG.longitude;
+const umqToday = () => UMQ_DAY && UMQ_DAY.key === umqKey() ? UMQ_DAY.d : null;
+async function loadUmq(){
+  if(umqToday()) return umqToday();
+  const p = riyadhParts();
+  const zone = Math.round((Date.UTC(p.y, p.mo-1, p.d, p.h, p.mi, p.s) - Date.now()) / 900000) / 4;   // this city's UTC offset, hours
+  const j = await getJSON(`https://umqserv.kacst.gov.sa/api/v1/Prayer/GetPrayers?lang=ar&format=24&yg=${p.y}&mg=${p.mo}&dg=${p.d}`
+    + `&lat=${CONFIG.latitude}&lon=${CONFIG.longitude}&zone=${zone}`, null);
+  if(!j || !j.hijriDate || !j.prayerTimes || !j.gregorianDate || j.gregorianDate.day !== p.d) return null;
+  UMQ_DAY = {key: umqKey(), d: j};
+  try{ localStorage.setItem('umqDay', JSON.stringify(UMQ_DAY)); }catch(e){}
+  tickDates();
+  return j;
 }
 // «٣ العقرب [٨] ١٤٠٥ هـ.ش»: the solar Hijri year (the Persian calendar's arithmetic) with the zodiac month names
 const BURJ = ['الحمل','الثور','الجوزاء','السرطان','الأسد','السنبلة','الميزان','العقرب','القوس','الجدي','الدلو','الحوت'];
@@ -1238,6 +1270,19 @@ function computePrayers(lat = CONFIG.latitude, lng = CONFIG.longitude){
 }
 
 async function loadPrayers(){
+  const u = await loadUmq().catch(() => null), t = u && u.prayerTimes;
+  const hm = s => /^\d{2}:\d{2}$/.test(String(s || '')) ? s : null;
+  if(t && ['fajr','sunrise','dhuhr','asr','maghrib','isha'].every(k => hm(t[k])))
+    buildPrayers({Fajr: t.fajr, Sunrise: t.sunrise, Dhuhr: t.dhuhr, Asr: t.asr, Maghrib: t.maghrib, Isha: t.isha});
+  else await loadPrayersElsewhere();
+  tickPrayer();
+  armAdhan();      // the next adhan to the second
+  applyMode();     // day and night follow the real sunrise and Maghrib as soon as they are known
+  tickRamadan();   // Ramadan mode needs the prayer times
+  if(CONFIG.panel === 'prayers' || CONFIG.panel === 'home') renderPanel(false);
+}
+// when the official calendar has not answered: Aladhan (same method), then today's kept answer, then the reckoning
+async function loadPrayersElsewhere(){
   const p = riyadhParts();
   const url = `https://api.aladhan.com/v1/timings/${pad(p.d)}-${pad(p.mo)}-${p.y}`
             + `?latitude=${CONFIG.latitude}&longitude=${CONFIG.longitude}`
@@ -1253,11 +1298,6 @@ async function loadPrayers(){
     let kept = null; try{ kept = JSON.parse(localStorage.getItem('prayers:' + url) || 'null'); }catch(_){}
     try{ buildPrayers(kept && kept.Fajr ? kept : computePrayers()); }catch(_){}
   }
-  tickPrayer();
-  armAdhan();      // the next adhan to the second
-  applyMode();     // day and night follow the real sunrise and Maghrib as soon as they are known
-  tickRamadan();   // Ramadan mode needs the prayer times
-  if(CONFIG.panel === 'prayers' || CONFIG.panel === 'home') renderPanel(false);
 }
 
 const UNIT = {
@@ -1717,10 +1757,21 @@ function hijriMonthNow(){
 // ---------- occasions: Ramadan, the two Eids (Umm al-Qura), National Day and Founding Day ----------
 // One at a time in the centre panel, the next one every 15 seconds, nearest first. Days only; the day before,
 // a live countdown to midnight and the greeting; on the day itself, the greeting.
+// The Hijri ones are the official calendar's list (assets/shared/umq-occasions.json, from ummulqura.org.sa), as
+// named and greeted here; on the day itself the card tells what the day is and its virtue (umqOccasionToday).
+const UMQ_OCC = __UMQ_OCC__;
+const UMQ_SHOW = {
+  'hijri-new-year': {name:'العام الهجري',  greet:'كل عام وأنتم بخير',          ic:'fitr'},
+  'ashura':         {name:'يوم عاشوراء',   greet:'صيام يوم عاشوراء',            ic:'fitr'},
+  'ramadan-start':  {name:'رمضان',         greet:'رمضان مبارك',                 ic:'ramadan'},
+  'eid-al-fitr':    {name:'عيد الفطر',     greet:'عيد فطر مبارك',               ic:'fitr'},
+  'tarwiyah':       {name:'يوم التروية',   greet:'يوم التروية',                 ic:'adha'},
+  'arafah':         {name:'يوم عرفة',      greet:'صيام يوم عرفة',               ic:'adha'},
+  'eid-al-adha':    {name:'عيد الأضحى',    greet:'عيد أضحى مبارك',              ic:'adha'},
+  'tashreeq-day-1': {name:'أيام التشريق',  greet:'أيام أكل وشرب وذكر لله',      ic:'adha'},
+};
 const OCCASIONS = [
-  {name:'رمضان',        hijri:[9,1],   greet:'رمضان مبارك',      year:'hijri', ic:'ramadan'},
-  {name:'عيد الفطر',    hijri:[10,1],  greet:'عيد فطر مبارك',     year:'hijri', ic:'fitr'},
-  {name:'عيد الأضحى',   hijri:[12,10], greet:'عيد أضحى مبارك',    year:'hijri', ic:'adha'},
+  ...UMQ_OCC.filter(x => UMQ_SHOW[x.id]).map(x => Object.assign({hijri: [x.month, x.day], year: 'hijri', umq: x}, UMQ_SHOW[x.id])),
   {name:'اليوم الوطني', greg:[9,23],   greet:'دام عزك يا وطن',    year:'national', ic:'national'},
   {name:'يوم التأسيس',  greg:[2,22],   greet:'يوم بدينا',          year:'founding', ic:'founding'},
 ];
@@ -3051,6 +3102,9 @@ function bdaySlide(){
 function cardSlides(){
   const day = riyadhDayNumber(), slides = [];
   const dk = adhkarTime();
+  const occ = umqOccasionToday();
+  if(occ) slides.push(() => ({title: occ.nameAr, rows: [`<li class="quote">${esc(occ.descriptionAr)}</li>`]
+    .concat(occ.virtueAr ? [`<li class="bio">${esc(occ.virtueAr)}</li>`] : [])}));
   const picked = pickedSlide();
   if(picked && picked.rows.length) slides.push(() => pickedSlide() || quoteOfDay());
   if(GUEST()) slides.push(() => guestSlide());
@@ -3073,6 +3127,17 @@ function cardSlides(){
   const m = matchCard();
   if(m.length && cardOn('matches')) slides.push(() => ({title: PANEL_TITLE.matches, rows: m}));
   return slides;
+}
+// today's occasion in the official list, by the official Hijri date (or Umm al-Qura's own when it has not answered)
+function umqOccasionToday(){
+  const u = umqToday();
+  let m, d;
+  if(u){ m = u.hijriDate.month; d = u.hijriDate.day; }
+  else{
+    const hp = IDF('en-u-ca-islamic-umalqura', {timeZone: CONFIG.timezone, day: 'numeric', month: 'numeric'}).formatToParts(new Date()).reduce((a, x) => (a[x.type] = x.value, a), {});
+    m = +String(hp.month).replace(/[^0-9]/g, ''); d = +String(hp.day).replace(/[^0-9]/g, '');
+  }
+  return UMQ_OCC.find(x => x.month === m && x.day === d && !x.isHistorical) || null;
 }
 function rotatingCard(){
   const slides = cardSlides();

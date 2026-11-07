@@ -210,6 +210,7 @@ def main():
     picks += json.loads((ROOT / "assets/shared/wisdom-ar.json").read_text(encoding="utf-8"))
     html = html.replace("__WISDOM__", json.dumps(picks, ensure_ascii=False))
     html = html.replace("__ADHKAR__", (ROOT / "assets/shared/adhkar.json").read_text(encoding="utf-8").strip())
+    html = html.replace("__UMQ_OCC__", (ROOT / "assets/shared/umq-occasions.json").read_text(encoding="utf-8").strip())
     html = html.replace("__SCHOOL__", (ROOT / "assets/shared/school-holidays.json").read_text(encoding="utf-8").strip())
 
     bg_dir = ROOT / "assets/backgrounds"
