@@ -837,6 +837,10 @@ html:not(.widget) .v2-show .series-copy .release-date{display:none}
 .dua .d1{font-size:1.4vw;color:#F1CF8A;letter-spacing:.04em}
 .dua .d2{font-size:2.05vw;line-height:2;color:#FFF7E6;max-width:92%}
 .dua .d3{font-size:.85vw;color:#B9AE96;display:flex;align-items:center;gap:.5vw}
+/* low-RAM mode (applyLowRam): nothing moves or blurs; the content is the same */
+html.lowram *,html.lowram *::before,html.lowram *::after{animation:none!important;transition:none!important}
+html.lowram *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+html.lowram .clock-face>.wday,html.lowram .clock-face>svg{filter:none!important}
 </style>
 </head>
 <body>
@@ -970,6 +974,7 @@ const CONFIG = {
          (_Q.get('panel') || (_Q.get('week') === '0' ? 'none' : 'shows')),
   matchesPerPage: 2,
   matchPageMs: 15000,
+  ram: _num('ram', 0),   // this TV's memory, MB (the app adds it): under 2.6 GB the screen goes light
   // minutes from adhan to iqama (Ministry of Islamic Affairs defaults); Friday Dhuhr has none
   iqama: {Fajr:25, Dhuhr:20, Asr:20, Maghrib:10, Isha:20},
   // "new this week" filters from the app: TVMaze genres, languages, countries, picked show ids
@@ -987,9 +992,11 @@ const CONFIG = {
 
 // Intl.DateTimeFormat is slow to build and the clock asks for one several times a second: one per locale+options
 const IDF_CACHE = {};
-function IDF(loc, opt){ const k = loc + JSON.stringify(opt || {}); return IDF_CACHE[k] || (IDF_CACHE[k] = new Intl.DateTimeFormat(loc, opt)); }
+// every number on the screen in Western digits (0-9), as the household reads them: Arabic dates ask for latn
+const toLatn = loc => /^ar/.test(loc) ? loc.replace(/-nu-[a-z]+/, '') + (/-u-/.test(loc) ? '-nu-latn' : '-u-nu-latn') : loc;
+function IDF(loc, opt){ loc = toLatn(loc); const k = loc + JSON.stringify(opt || {}); return IDF_CACHE[k] || (IDF_CACHE[k] = new Intl.DateTimeFormat(loc, opt)); }
 // write only what changed: no relayout every second for the same text
-function setHTML(el, html){ if(el && el.__h !== html){ el.innerHTML = html; el.__h = html; } }
+function setHTML(el, html){ if(el && el.__h !== html){ el.innerHTML = latn(html); el.__h = html; } }
 // a box's new content rises softly into place; a running countdown ticking alone is not new content
 const softKey = h => h.replace(/(<span class="cdn"[^>]*>)[^<]*/g, '$1');
 function softHTML(el, html){
@@ -1003,6 +1010,7 @@ function softHTML(el, html){
 // the new content rises into place from below as it fades in
 function crossfade(el, update){
   update();
+  if(document.documentElement.classList.contains('lowram')) return;
   if(el && !document.hidden){ el.classList.remove('xf-in'); void el.offsetWidth; el.classList.add('xf-in'); }
 }
 // a live countdown: hh:mm:ss (and days), kept current by tickCountdowns every second
@@ -1023,10 +1031,14 @@ function tickCountdowns(){
   });
 }
 const GREG = 'ar-SA-u-ca-gregory-nu-arab';
-const AR = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
-const ar = s => String(s).replace(/[0-9]/g, d => AR[+d]);
+// ar() once turned digits into Arabic-Indic; now every digit, whatever wrote it, is Western
+const latn = s => String(s).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+const ar = latn;
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad = n => String(n).padStart(2,'0');
+// a moment as this city's 12-hour time, «3:30 م»
+const fmtTime = t => { const [h, m] = IDF('en-GB', {timeZone: CONFIG.timezone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23'}).format(t).split(':').map(Number);
+  return (h % 12 || 12) + ':' + pad(m) + ' ' + (h < 12 ? 'ص' : 'م'); };
 
 function riyadhParts(d = new Date()){
   const f = IDF('en-GB',{
@@ -1414,6 +1426,11 @@ function renderPrayerStrip(mins){
   }
 }
 
+// ---------- low-RAM mode: no animations, no blurs or shadows, slower redraws ----------
+const lowRam = () => { const m = (typeof CTRL !== 'undefined' && CTRL.display && CTRL.display.lowRam) || 'auto';
+  return m === 'on' || (m !== 'off' && CONFIG.ram > 0 && CONFIG.ram < 2600); };
+const applyLowRam = () => document.documentElement.classList.toggle('lowram', lowRam());
+
 // ---------- alerts under the clock ----------
 const WARN_ICON = c => `<svg viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3z" fill="${c}"/><path d="M12 9v5" stroke="#1a1208" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17" r="1.2" fill="#1a1208"/></svg>`;
 const pill = (cls, text, icon) => `<span class="al ${cls}">${icon || ''}<span>${text}</span></span>`;
@@ -1439,11 +1456,42 @@ function fastReasons(d){
   if(wd === 'Thu') out.push('الخميس');
   return out;
 }
+// The National Center for Meteorology's early warnings for this city (its governorate by name, else the nearest one
+// within 40 km), every 30 minutes; while they answer they replace the forecast's own guesses at dust, rain and fog.
+let NCM = null;   // null: not answered yet; [] none in force
+const NCM_LVL = {yellow: 1, orange: 2, red: 3}, NCM_WORD = {1: 'أصفر', 2: 'برتقالي', 3: 'أحمر'};
+async function loadNcm(){
+  const day = d => IDF('en-CA', {timeZone: CONFIG.timezone}).format(d);
+  const c = new AbortController(), timer = setTimeout(() => c.abort(), 20000);
+  try{
+    const r = await fetch('https://new.ncm.gov.sa/manned-alerts', {method: 'POST', signal: c.signal, cache: 'no-store',
+      headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+      body: JSON.stringify({from_date: day(new Date()), to_date: day(new Date(Date.now() + 2*86400000)), lang: 'ar'})});
+    const j = await r.json();
+    if(!j || !j.success || !Array.isArray(j.data)) return;
+    const city = String(CONFIG.city).split(/\s+[-–]\s+|،/)[0].trim(), km = (a, b, c2, d) => {
+      const r2 = Math.PI / 180, x = (d - b) * r2 * Math.cos((a + c2) / 2 * r2), y = (c2 - a) * r2; return Math.hypot(x, y) * 6371; };
+    const here = a => (a.governorates || []).some(g => g.name_ar === city
+      || km(CONFIG.latitude, CONFIG.longitude, +g.latitude, +g.longitude) <= 40);
+    const t = s => Date.parse(String(s).replace(' ', 'T') + '+03:00'), now = Date.now();
+    NCM = j.data.filter(a => here(a) && t(a.toDate) > now && t(a.fromDate) <= now + 6*3600000)
+      .map(a => ({lvl: NCM_LVL[(a.alert_type && a.alert_type.color || '').toLowerCase()] || 1,
+        text: (a.alert_status && a.alert_status.ar) || '', from: t(a.fromDate), to: t(a.toDate)}))
+      .filter(a => a.text).sort((a, b) => b.lvl - a.lvl);
+    renderAlerts();
+  }catch(e){}   // not answering: the forecast's guesses stand in
+  finally{ clearTimeout(timer); }
+}
 function weatherAlerts(){
   const out = [], t = FORECAST[0];
   const add = (lvl, text) => { const [c, word, col] = SEV[lvl]; out.push(pill(c, `${text} <small>· خطورة ${word}</small>`, WARN_ICON(col))); };
-  if(DUST_PM >= 400) add(3, 'غبار كثيف'); else if(DUST_PM >= 150) add(2, 'غبار');
-  const codes = [WX_NOW, t && t.code].filter(c => typeof c === 'number');
+  if(NCM){   // the official warnings: the colour as the Center names it, and «from» when it starts later today
+    NCM.forEach(a => { const [c, , col] = SEV[a.lvl];
+      out.push(pill(c, `${esc(a.text)} <small>· إنذار ${NCM_WORD[a.lvl]}${a.from > Date.now() ? ' من ' + fmtTime(a.from) : ' حتى ' + fmtTime(a.to)}</small>`, WARN_ICON(col))); });
+  }else{
+    if(DUST_PM >= 400) add(3, 'غبار كثيف'); else if(DUST_PM >= 150) add(2, 'غبار');
+  }
+  const codes = NCM ? [] : [WX_NOW, t && t.code].filter(c => typeof c === 'number');
   if(codes.some(c => c >= 95)) add(3, 'عواصف رعدية');
   else if(codes.some(c => c === 65 || c === 82 || c === 67)) add(3, 'أمطار غزيرة');
   else if(codes.some(c => (c >= 61 && c <= 66) || c === 80 || c === 81)) add(2, 'أمطار');
@@ -1487,6 +1535,10 @@ function renderAlerts(){
   const dh = PRAYERS.find(x => x.key === 'Dhuhr');
   if(wd === 'Fri' && dh && at(dh) - mins > 10 && at(dh) - mins <= 90)
     out.push(pill('fri', `صلاة الجمعة بعد ${humanRemaining(Math.round((at(dh) - mins)*60))} <small>· التبكير إليها</small>`));
+  // Ramadan: suhoor in the hour before the imsak (Fajr)
+  const fj = PRAYERS.find(x => x.key === 'Fajr');
+  if(hijriMonthNow() === 9 && fj && at(fj) - mins > 0 && at(fj) - mins <= 60)
+    out.push(pill('fast', `السحور: الإمساك بعد ${humanRemaining(Math.round((at(fj) - mins)*60))}`));
   // fasting: today until Maghrib, then tomorrow
   const day = mins < maghrib ? new Date() : new Date(now + 86400000);
   const why = fastReasons(day);
@@ -1599,6 +1651,7 @@ function adhanMode(fajr){
   return ok(d.adhanMode) || 'full';
 }
 function playAdhan(cur){
+  if(KAHF_AUDIO){ KAHF_AUDIO.pause(); KAHF_AUDIO = null; }   // the adhan stops the recitation
   const key=todayKey()+cur.key;
   if(ADHAN_DONE===key || CONFIG.widget)return;
   const mode=adhanMode(cur.key==='Fajr');ADHAN_DONE=key;
@@ -2058,7 +2111,9 @@ function tickRamadan(){
     const ic0 = document.getElementById('occ-ic'); if(ic0) setHTML(ic0, occIcon('ramadan'));
     elD.innerHTML = '<span class="num">' + ar(th%12===0?12:th%12) + ':' + ar(String(tm).padStart(2,'0'))
                   + '</span> <span class="unit">' + (th < 12 ? 'ص' : 'م') + '</span>';
-    elS.innerHTML = 'بعد <b>' + humanRemaining(Math.max(0, Math.round((targetM - mins)*60))) + '</b>';
+    const fasting = mins >= fajrM && mins < maghribM, pct = Math.floor((mins - fajrM) / (maghribM - fajrM) * 100);
+    elS.innerHTML = 'بعد <b>' + humanRemaining(Math.max(0, Math.round((targetM - mins)*60))) + '</b>'
+      + (fasting ? ` <span class="fastpct">· مضى ${ar(pct)}٪ من الصيام</span>` : '');
   }
 }
 
@@ -2330,6 +2385,7 @@ async function loadControl(){
     const nowAsk = (next.screens || {}).now, oldAsk = (CTRL.screens || {}).now;
     const guestWas = GUEST();
     CTRL = next;
+    applyLowRam();   // the phone page may switch it
     const t = next.selftest;   // a test sent from the computer (SaverReceiver TEST)
     if(t && t.at && t.at !== SELFTEST_AT && Date.now() - t.at < 60000){ SELFTEST_AT = t.at; runSelfTest(t.what); }
     // «اعرض الحين» on the phone: that screen at once
@@ -3374,6 +3430,10 @@ function bdaySlide(){
 function cardSlides(){
   const day = riyadhDayNumber(), slides = [];
   const dk = adhkarTime();
+  if(kahfTime()) slides.push(tag('kahf', () => ({title: 'سورة الكهف', rows: [
+    '<li class="quote">«من قرأ سورة الكهف في يوم الجمعة أضاء له من النور ما بين الجمعتين»</li>',
+    '<li class="src">رواه الحاكم والبيهقي، وصححه الألباني</li>',
+    `<li class="bio">${KAHF_AUDIO ? '▶ جارٍ التشغيل بصوت مشاري العفاسي · اضغط OK للإيقاف' : 'اضغط OK في الريموت للاستماع بصوت مشاري العفاسي'}</li>`]})));
   const occ = umqOccasionToday();
   if(occ) slides.push(() => ({title: occ.nameAr, rows: [`<li class="quote">${esc(occ.descriptionAr)}</li>`]
     .concat(occ.virtueAr ? [`<li class="bio">${esc(occ.virtueAr)}</li>`] : [])}));
@@ -3411,6 +3471,28 @@ function umqOccasionToday(){
   }
   return UMQ_OCC.find(x => x.month === m && x.day === d && !x.isHistorical) || null;
 }
+// Thursday from Maghrib to Friday's Maghrib
+function kahfTime(){
+  const p = riyadhParts(), mins = p.h*60 + p.mi, wd = weekdayOf(new Date()), mg = minutesOf('Maghrib', 18*60);
+  return (wd === 'Thu' && mins >= mg) || (wd === 'Fri' && mins < mg);
+}
+const KAHF_URL = 'https://cdn.mp3quran.net/audio/mishary-alafasy/r1/018.mp3';
+let KAHF_AUDIO = null;
+function kahfToggle(){
+  if(KAHF_AUDIO){ KAHF_AUDIO.pause(); KAHF_AUDIO = null; }
+  else{
+    const a = new Audio(KAHF_URL);
+    a.onended = a.onerror = () => { if(KAHF_AUDIO === a){ KAHF_AUDIO = null; renderPanel(false); } };
+    KAHF_AUDIO = a; a.play().catch(() => { KAHF_AUDIO = null; renderPanel(false); });
+  }
+  renderPanel(false);
+}
+// OK on the remote (the app asks first): the card on screen has its own action, else the app does its own
+window.cardAction = () => {
+  const all = cardSlides(), cur = all.length && all[CARD_TURN % all.length];
+  if(cur && cur.kind === 'kahf'){ kahfToggle(); return true; }
+  return false;
+};
 function rotatingCard(){
   const slides = cardSlides();
   const dots = document.getElementById('card-dots');
@@ -3919,6 +4001,7 @@ function boot(){
   setInterval(renderV2,1000);
 
   if(CONFIG.widget){ bootWidget(); return; }
+  applyLowRam();
   restoreSnap();
   setTimeout(saveSnap, 15*1000);   // the dream can be killed before pagehide
   setInterval(saveSnap, 60*1000);
@@ -3955,6 +4038,7 @@ function boot(){
   loadControl(); setInterval(loadControl, 10*1000);
   if(CONFIG.panel === 'shows') setInterval(loadWeek, 6*3600*1000);
   setInterval(loadWeather, 30*60*1000);
+  loadNcm(); setInterval(loadNcm, 30*60*1000);
   setInterval(()=>{
     if(CONFIG.panel === 'shows' && WEEK_POOL.length > WEEK_ROWS) WEEK_PAGE++;   // the next five when its card comes round
   }, 25*1000);
@@ -4003,6 +4087,7 @@ function bootWidget(){
 }
 
 document.addEventListener('keydown', e=>{
+  if(e.key === 'Enter' && window.cardAction()) e.preventDefault();
   if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();navigateCard(e.key==='ArrowLeft'?1:-1);}
   if(e.key === 'f' || e.key === 'F'){
     if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});

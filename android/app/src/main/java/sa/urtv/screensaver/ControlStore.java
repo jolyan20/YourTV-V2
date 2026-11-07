@@ -135,6 +135,29 @@ final class ControlStore {
         return new JSONObject().put("id", id).put("name", p.getString("tvName", id));
     }
 
+    /** where another TV of the household last answered (ControlSync), or null */
+    static String tvHost(Context c, String id) {
+        try {
+            JSONObject t = new JSONObject(prefs(c).getString("tvsKnown", "{}")).optJSONObject(id);
+            String h = t == null ? "" : t.optString("host");
+            return h.matches("[0-9.]{7,15}") ? h : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** the screen options for this TV: the shared ones with this TV's own over them (display.perTv[id]) */
+    static JSONObject display(Context c) {
+        try {
+            JSONObject d = new JSONObject(prefs(c).getString("display", "{}")), own = d.optJSONObject("perTv");
+            own = own == null ? null : own.optJSONObject(me(c).optString("id"));
+            if (own != null) for (Iterator<String> it = own.keys(); it.hasNext(); ) { String k = it.next(); d.put(k, own.get(k)); }
+            return d;
+        } catch (Exception e) {
+            return new JSONObject();
+        }
+    }
+
     /** the household's TVs: this one, then the others as they last answered (ControlSync) */
     static org.json.JSONArray tvs(Context c) throws Exception {
         org.json.JSONArray out = new org.json.JSONArray();
@@ -149,12 +172,12 @@ final class ControlStore {
     }
 
     /** remember another TV of the household by what it says it is */
-    static synchronized void knowTv(Context c, JSONObject tv) {
+    static synchronized void knowTv(Context c, JSONObject tv, String host) {
         try {
             String id = tv.optString("id");
             if (!id.matches("[a-z0-9-]{1,20}")) return;
             JSONObject known = new JSONObject(prefs(c).getString("tvsKnown", "{}"));
-            known.put(id, new JSONObject().put("name", tv.optString("name", id)).put("at", System.currentTimeMillis()));
+            known.put(id, new JSONObject().put("name", tv.optString("name", id)).put("host", host).put("at", System.currentTimeMillis()));
             prefs(c).edit().putString("tvsKnown", known.toString()).apply();
         } catch (Exception ignored) { }
     }

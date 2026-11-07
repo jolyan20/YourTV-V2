@@ -38,6 +38,7 @@ final class NoticeOverlay {
     private View box;
     private String boxKey = "";
     private long boxUntil = 0;
+    private Runnable onHide;   // the adhan's notice gives the sound back when it goes
 
     NoticeOverlay(Context c) { this.c = c.getApplicationContext(); }
 
@@ -51,6 +52,11 @@ final class NoticeOverlay {
     void start() { handler.postDelayed(tick, 20_000); }
 
     void stop() { handler.removeCallbacks(tick); hide(); }
+
+    /** the adhan while an app plays (AdhanWatch): the notice, and `back` when it is hidden or its time is up */
+    void adhan(String prayer, long until, Runnable back) {
+        handler.post(() -> { show("adhan" + prayer + until, "🕌", "الأذان", "حان وقت صلاة " + prayer, "خفّضنا صوت التطبيق ويرجع بعد الأذان", until); onHide = back; });
+    }
 
     /** a test from the computer or the phone: a notice, now */
     void test() { handler.post(() -> show("test", "🔔", "تنبيه", "هذا تنبيه فوق التطبيقات (اختبار)", "النظام", System.currentTimeMillis() + 20_000)); }
@@ -122,14 +128,17 @@ final class NoticeOverlay {
         b.addView(text(icon + "  " + title, 17, 0xFFE8C46F, true));
         b.addView(text(text, 26, 0xFFFFF3D6, true));
         if (!sub.isEmpty()) b.addView(text(sub, 15, 0xFFC6BBA4, false));
+        b.addView(text("زر الرجوع أو OK يخفيه", 13, 0x99E8C46F, false));
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, PixelFormat.TRANSLUCENT);
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL, PixelFormat.TRANSLUCENT);
+        Dismiss.byRemote(b, this::hide);
         lp.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
         lp.y = dp(28);
         lp.windowAnimations = android.R.style.Animation_Toast;   // fades in and out, no jump
         try { wm.addView(b, lp); } catch (Exception e) { return; }
+        b.requestFocus();
         box = b; boxKey = key; boxUntil = until;
         handler.postDelayed(() -> { if (box == b && System.currentTimeMillis() >= boxUntil) hide(); }, Math.max(1000, until - System.currentTimeMillis()));
     }
@@ -147,6 +156,8 @@ final class NoticeOverlay {
         if (box == null) return;
         try { ((WindowManager) c.getSystemService(Context.WINDOW_SERVICE)).removeView(box); } catch (Exception ignored) { }
         box = null; boxKey = "";
+        Runnable r = onHide; onHide = null;
+        if (r != null) r.run();
     }
 
     private TextView text(String s, int sp, int color, boolean bold) {
@@ -196,7 +207,7 @@ final class NoticeOverlay {
         int h = mins / 60, m = mins % 60, h12 = h % 12 == 0 ? 12 : h % 12;
         String x = h12 + ":" + (m < 10 ? "0" : "") + m;
         StringBuilder out = new StringBuilder();
-        for (char ch : x.toCharArray()) out.append(ch >= '0' && ch <= '9' ? (char) ('٠' + (ch - '0')) : ch);
+        for (char ch : x.toCharArray()) out.append(ch);   // Western digits, as on the screen
         return "⁦" + out + "⁩ " + (h < 12 ? "ص" : "م");
     }
 

@@ -252,7 +252,7 @@ final class GameOverlay {
         long t = (ms + 999) / 1000, h = t / 3600, m = t % 3600 / 60, s = t % 60;
         String x = (h > 0 ? h + ":" + two(m) : String.valueOf(m)) + ":" + two(s);
         StringBuilder out = new StringBuilder();
-        for (char ch : x.toCharArray()) out.append(ch >= '0' && ch <= '9' ? (char) ('٠' + (ch - '0')) : ch);
+        for (char ch : x.toCharArray()) out.append(ch);   // Western digits, as on the screen
         return "⁦" + out + "⁩";   // isolated, so it reads left to right inside the Arabic text
     }
 

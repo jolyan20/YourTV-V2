@@ -146,6 +146,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        quran(false);   // the stream may have been switched on the phone or the screensaver
         IntentFilter tf = new IntentFilter(Intent.ACTION_TIME_TICK);
         tf.addAction(Intent.ACTION_TIME_CHANGED);
         tf.addAction(Intent.ACTION_TIMEZONE_CHANGED);
@@ -250,6 +251,7 @@ public class MainActivity extends Activity {
         // optional card under the pills, same size as beside the screensaver's clock
         homeCard = new HomeCard(this, hero, lp(-1, -1, Gravity.TOP, 0, 0, 0, 0));
         nativeHeader.bringToFront();
+        nativeHeader.setAlpha(HEADER_REST);
 
         LinearLayout bottom = new LinearLayout(this);
         bottom.setOrientation(LinearLayout.VERTICAL);
@@ -331,13 +333,31 @@ public class MainActivity extends Activity {
         wifiPill.setOnClickListener(v -> launch(new Intent(Settings.ACTION_WIFI_SETTINGS)));
         TextView settings = pill("الإعدادات", R.drawable.ic_settings);
         settings.setOnClickListener(v -> launch(new Intent(Settings.ACTION_SETTINGS)));
-        for (TextView p : isInstalled(SAVER_PKG) ? new TextView[]{inputs, wifiPill, settings, saver}
+        quranPill = pill("القرآن", R.drawable.ic_screensaver);
+        quranPill.setOnClickListener(v -> quran(true));
+        quran(false);
+        for (TextView p : isInstalled(SAVER_PKG) ? new TextView[]{inputs, wifiPill, settings, quranPill, saver}
                                                   : new TextView[]{inputs, wifiPill, settings}) {
             right.addView(p, llp(-2, dp(30), dp(10), 0, 0, 0));
             pills.add(p);
         }
         header.addView(right, new FrameLayout.LayoutParams(-2, -2, Gravity.LEFT | Gravity.TOP));
         return header;
+    }
+
+    /** the Makkah stream (the screensaver app plays it on every TV): `toggle` switches it, else the label follows it */
+    private void quran(boolean toggle) {
+        try {
+            android.os.Bundle b = getContentResolver().call(SAVER_CONFIG, "quran", toggle ? "toggle" : "state", null);
+            if (b != null && quranPill != null) quranPill.setText(b.getBoolean("on") ? "إيقاف القرآن" : "القرآن");
+        } catch (Exception ignored) { }   // the screensaver app missing or older
+    }
+
+    /** the TV's own picker of sources (HDMI, the tuner): TCL's and Haier's answer this; else our list */
+    private boolean openInputPicker() {
+        Intent i = new Intent("com.android.tv.action.VIEW_INPUTS");
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        return i.resolveActivity(getPackageManager()) != null && launch(i);
     }
 
     /** Pill button: label with a Material icon on its right (Arabic reading order), tinted with the text. */
@@ -691,7 +711,7 @@ public class MainActivity extends Activity {
             }));
         }
         if (isInstalled(liveTvPkg)) rows.add(inputRow("البث التلفزيوني", () -> openPackage(liveTvPkg)));
-        if (inputs.isEmpty() && isInstalled(inputPickerPkg)) rows.add(inputRow("كل المصادر…", () -> openPackage(inputPickerPkg)));
+        rows.add(inputRow("كل المصادر…", () -> { if (!openInputPicker() && isInstalled(inputPickerPkg)) openPackage(inputPickerPkg); }));
 
         if (rows.isEmpty()) rows.add(inputRow("الإعدادات", () -> launch(new Intent(Settings.ACTION_SETTINGS))));
         for (TextView r : rows) {
@@ -759,7 +779,7 @@ public class MainActivity extends Activity {
 
     private static String arabicDigits(String s) {
         StringBuilder b = new StringBuilder(s.length());
-        for (char c : s.toCharArray()) b.append(c >= '0' && c <= '9' ? (char) ('٠' + (c - '0')) : c);
+        b.append(s);   // Western digits, as on the screen
         return b.toString();
     }
 
@@ -1067,6 +1087,9 @@ public class MainActivity extends Activity {
     // The home screen is the screensaver's screen, whole. The apps wait under it: Down (or OK) brings the header
     // and the favourites up from the bottom, Up from them or Back puts them away, and so do 20 s without a key.
     private View nativeHeader, dockBand;
+    private static final float HEADER_REST = 0.45f;   // the buttons bar over the screen, faint until Up or Down
+    private static final android.net.Uri SAVER_CONFIG = android.net.Uri.parse("content://sa.yourtv.v2.screensaver.config");
+    private TextView quranPill;
     private boolean appsShown = true;
     private final Runnable hideApps = () -> showApps(false, true);
 
@@ -1077,7 +1100,7 @@ public class MainActivity extends Activity {
         long ms = animate ? 380 : 0;
         dockBand.animate().translationY(on ? 0 : dp(240)).alpha(on ? 1f : 0f).setDuration(ms)
             .setInterpolator(new DecelerateInterpolator(2f)).start();
-        nativeHeader.animate().alpha(on ? 1f : 0f).setDuration(ms).start();
+        nativeHeader.animate().alpha(on ? 1f : HEADER_REST).setDuration(ms).start();
         gridShade.animate().alpha(0f).setDuration(ms).start();
         if (on) {
             if (!dockCards.isEmpty()) dockCards.get(0).requestFocus();
@@ -1092,16 +1115,33 @@ public class MainActivity extends Activity {
     public boolean dispatchKeyEvent(KeyEvent e) {
         int key = e.getKeyCode();
         boolean up = e.getAction() == KeyEvent.ACTION_UP;
+        if (key == KeyEvent.KEYCODE_TV_INPUT || (key >= KeyEvent.KEYCODE_TV_INPUT_HDMI_1 && key <= KeyEvent.KEYCODE_TV_INPUT_VGA_1)) {
+            if (up && !openInputPicker()) { if (!appsShown) showApps(true, true); showInputs(pills.get(0)); }   // the remote's Source
+            return true;
+        }
+        if (key == KeyEvent.KEYCODE_SETTINGS) {
+            if (up) launch(new Intent(Settings.ACTION_SETTINGS));
+            return true;
+        }
         if (!appsShown) {
             if (key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT) {   // the card, as on the screensaver
                 if (up && homeCard != null) homeCard.navigate(key == KeyEvent.KEYCODE_DPAD_LEFT ? 1 : -1);
                 return true;
             }
-            if (key == KeyEvent.KEYCODE_DPAD_DOWN || key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER) {
+            if (key == KeyEvent.KEYCODE_DPAD_DOWN) {
                 if (up) showApps(true, true);
                 return true;
             }
-            if (key == KeyEvent.KEYCODE_DPAD_UP || key == KeyEvent.KEYCODE_BACK) return true;
+            if (key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER) {   // the card's own action, else the apps
+                if (up) { if (homeCard != null) homeCard.cardAction(() -> showApps(true, true)); else showApps(true, true); }
+                return true;
+            }
+            if (key == KeyEvent.KEYCODE_DPAD_UP) {   // the bar: sources, Wi-Fi, settings, the Quran
+                if (up && !pills.isEmpty()) { showApps(true, true); pills.get(0).requestFocus(); }
+                return true;
+            }
+            if (key == KeyEvent.KEYCODE_BACK) return true;
+            if (up) android.util.Log.i("YourTVHome", "remote key " + key + " " + KeyEvent.keyCodeToString(key));   // to map a remote's own keys
         } else {
             handler.removeCallbacks(hideApps);
             handler.postDelayed(hideApps, 20_000);

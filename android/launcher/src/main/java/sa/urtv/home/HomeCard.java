@@ -48,6 +48,12 @@ final class HomeCard {
     }
 
     /** onPause: no timers or network while an app is in front. */
+    /** OK on the remote: the card on screen has its own action (Surat Al-Kahf), else `otherwise` (the apps) */
+    void cardAction(Runnable otherwise) {
+        if (web == null) { otherwise.run(); return; }
+        web.evaluateJavascript("window.cardAction ? cardAction() : false", v -> { if (!"true".equals(v)) otherwise.run(); });
+    }
+
     void navigate(int direction) { if (web != null) web.evaluateJavascript("window.navigateCard && navigateCard(" + direction + ")", null); }
     void focusCards(boolean on) { if (web != null) web.evaluateJavascript("document.querySelector('.week').classList.toggle('remote-focus'," + on + ")", null); }
     void pause() {
@@ -87,8 +93,9 @@ final class HomeCard {
                 }
                 if (tmp.length() > 30_000 && tmp.renameTo(out)) return "file://" + out.getAbsolutePath();
             }
-        } catch (Exception ignored) { }   // the screensaver has not updated it yet: the built-in page
-        return out.isFile() ? "file://" + out.getAbsolutePath() : "file:///android_asset/web/tv.html";
+        } catch (Exception ignored) { }   // none newer than the apps (or not updated yet): the built-in page
+        out.delete();   // an older copy would hide the page this update brought
+        return "file:///android_asset/web/tv.html";
     }
 
     @SuppressLint("SetJavaScriptEnabled")

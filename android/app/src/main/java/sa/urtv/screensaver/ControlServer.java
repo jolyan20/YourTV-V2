@@ -125,7 +125,9 @@ final class ControlServer implements Runnable {
             String device=get(h,"x-device","");
             if(!device.isEmpty() && !device.equals("local")) {
                 if(!ControlStore.sessionValid(app,get(h,"x-key",""))) {reply(s,401,"application/json","{}",false);return;}
-                if(!path.matches("/api/(state|prefs|teams|shows|save|upload|quran|appupdate|test|openoverlay)(\\?.*)?")) {reply(s,403,"application/json","{}",false);return;}
+                if(!path.matches("/api/(state|prefs|teams|shows|save|upload|quran|appupdate|test|openoverlay|tvname)(\\?.*)?")) {reply(s,403,"application/json","{}",false);return;}
+                String peerHost = ControlStore.tvHost(app, device);
+                if (peerHost != null) { relayPeer(s, in, method, path, h, len, peerHost); return; }   // a TV of the household: its sync key
                 relayDevice(s,in,method,path,h,len,device); return;
             }
             byte[] body = new byte[upload ? 0 : len];
@@ -246,10 +248,16 @@ final class ControlServer implements Runnable {
                 reply(s, 200, "application/json; charset=utf-8", ControlSync.state(app).toString(), false); return;
             }
             String key = get(h, "x-key", "");
-            if (!ControlStore.sessionValid(app, key)) { reply(s, 401, "application/json", "{\"error\":\"session\"}", false); return; }
+            // the phone's session on this TV, or another TV of the household passing on that phone's request (relayPeer)
+            if (!ControlStore.sessionValid(app, key) && !ControlSync.keyMatches(app, get(h, "x-sync", ""))) { reply(s, 401, "application/json", "{\"error\":\"session\"}", false); return; }
             if("GET".equals(method) && "/api/devices".equals(path)) {
                 JSONArray list=new JSONArray(), devices=new JSONArray(ControlStore.prefs(app).getString("controlDevices","[]"));
-                list.put(new JSONObject().put("id","local").put("name","TCL"));
+                String meName = ControlStore.me(app).optString("name");
+                list.put(new JSONObject().put("id","local").put("name", meName.isEmpty() ? "هذا التلفزيون" : meName));
+                JSONArray tvs = ControlStore.tvs(app);   // the household's other TVs: one login controls them all
+                for (int n = 0; n < tvs.length(); n++) { JSONObject t = tvs.getJSONObject(n);
+                    if (!t.optString("id").equals(ControlStore.me(app).optString("id")) && ControlStore.tvHost(app, t.optString("id")) != null)
+                        list.put(new JSONObject().put("id", t.optString("id")).put("name", t.optString("name"))); }
                 for(int n=0;n<devices.length();n++){JSONObject d=devices.getJSONObject(n);list.put(new JSONObject().put("id",d.getString("id")).put("name",d.optString("name",d.getString("id"))));}
                 reply(s,200,"application/json",list.toString(),false);return;
             }
@@ -311,7 +319,7 @@ final class ControlServer implements Runnable {
             if ("/api/appupdate".equals(path)) {   // «تحديث التطبيق» on the phone: download here, «تثبيت» on the TV
                 if ("POST".equals(method)) new Thread(() -> AppUpdater.run(app, true)).start();
                 // while a download runs, its progress («… · ٤٥٪»); else whether there is an update
-                String st = "POST".equals(method) ? "جارٍ تنزيل التحديث · ٠٪" : AppUpdater.status().startsWith("جارٍ") ? AppUpdater.status() : AppUpdater.run(app, false);
+                String st = "POST".equals(method) ? "جارٍ تنزيل التحديث · 0٪" : AppUpdater.status().startsWith("جارٍ") ? AppUpdater.status() : AppUpdater.run(app, false);
                 reply(s, 200, "application/json; charset=utf-8", new JSONObject().put("status", st).toString(), false); return;
             }
             if ("GET".equals(method) && "/api/state".equals(path)) {
@@ -325,6 +333,13 @@ final class ControlServer implements Runnable {
                     ControlStore.setQuran(app, o.optBoolean("on"), at);
                     ControlSync.tell(app, "quran=" + (o.optBoolean("on") ? 1 : 0) + "a" + at);   // the household's other TVs too
                     if (o.optBoolean("on")) openScreen();
+                    reply(s, 200, "application/json", "{\"ok\":true}", false); return;
+                }
+                if ("/api/tvname".equals(path)) {   // this TV's name on the phone page («الصالة»): the others learn it at once
+                    String name = o.optString("name").trim();
+                    if (name.isEmpty() || name.length() > 30) { reply(s, 400, "application/json", "{\"error\":\"name\"}", false); return; }
+                    ControlStore.prefs(app).edit().putString("tvName", name).apply();
+                    ControlSync.tell(app, "pull=1");
                     reply(s, 200, "application/json", "{\"ok\":true}", false); return;
                 }
                 if ("/api/test".equals(path)) {   // «تجربة الميزات» on the phone: on every TV of the household
@@ -392,6 +407,28 @@ final class ControlServer implements Runnable {
                 p.edit().remove("volBeforeAdhan").apply();
             }
         } catch (Exception ignored) { }   // a TV with fixed volume (an amplifier's): nothing to set
+    }
+
+    /** the phone's request for another TV of the household: passed on with the shared sync key, the answer passed back */
+    private void relayPeer(Socket client, InputStream body, String method, String path, Map<String, String> headers, int length, String host) throws Exception {
+        String key = ControlStore.prefs(app).getString("syncKey", "");
+        if (key.length() < 32) { reply(client, 503, "application/json", "{\"error\":\"device_unavailable\"}", false); return; }
+        try (Socket remote = new Socket()) {
+            remote.connect(new java.net.InetSocketAddress(host, ControlStore.PORT), 4000); remote.setSoTimeout(90000); client.setSoTimeout(90000);
+            OutputStream out = remote.getOutputStream();
+            String type = get(headers, "content-type", "application/json");
+            if (!type.matches("[A-Za-z0-9/;= ._-]+")) type = "application/octet-stream";
+            out.write((method + " " + path + " HTTP/1.1\r\nHost: " + host + "\r\nX-Sync: " + key + "\r\nContent-Type: " + type
+                + "\r\nContent-Length: " + length + "\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+            byte[] buf = new byte[65536]; int left = length;
+            while (left > 0) { int n = body.read(buf, 0, Math.min(left, buf.length)); if (n < 0) throw new java.io.EOFException(); out.write(buf, 0, n); left -= n; }
+            out.flush();
+            InputStream input = remote.getInputStream(); String head = readHead(input);
+            if (head == null) throw new java.io.IOException("response");
+            OutputStream target = client.getOutputStream(); target.write(head.getBytes(StandardCharsets.UTF_8));
+            int n; while ((n = input.read(buf)) != -1) target.write(buf, 0, n);
+            target.flush();
+        } catch (Exception e) { reply(client, 503, "application/json", "{\"error\":\"device_unavailable\"}", false); }
     }
 
     private final Map<String,String> deviceSessions=new java.util.concurrent.ConcurrentHashMap<>();

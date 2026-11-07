@@ -160,7 +160,20 @@ final class Prefs {
             + "&genres=" + Uri.encode(join(list("genres"), ","))
             + "&langs=" + Uri.encode(join(list("langs"), ","))
             + "&shows=" + join(ids, ",")
-            + "&minrating=" + minRating();
+            + "&minrating=" + minRating()
+            + "&ram=" + ramMb();
+    }
+
+    /** this TV's memory in MB: under about 2.6 GB the screen goes light (the phone page can force it either way) */
+    int ramMb() {
+        try {
+            android.app.ActivityManager am = (android.app.ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
+            android.app.ActivityManager.MemoryInfo mi = new android.app.ActivityManager.MemoryInfo();
+            am.getMemoryInfo(mi);
+            return (int) (mi.totalMem / (1024 * 1024));
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     /** The card on the launcher's home screen: one of PANELS, off ("none") until the user picks one. */

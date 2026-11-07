@@ -93,7 +93,7 @@ final class UpdateProgress {
 
     static String arabic(int n) {
         StringBuilder out = new StringBuilder();
-        for (char ch : String.valueOf(n).toCharArray()) out.append(ch >= '0' && ch <= '9' ? (char) ('٠' + (ch - '0')) : ch);
+        for (char ch : String.valueOf(n).toCharArray()) out.append(ch);   // Western digits, as on the screen
         return out.toString();
     }
 }

@@ -26,7 +26,23 @@ public class ConfigProvider extends ContentProvider {
     public android.os.ParcelFileDescriptor openFile(Uri uri, String mode) throws java.io.FileNotFoundException {
         java.io.File f = Updater.pageFile(getContext());
         if (!"/page".equals(uri.getPath()) || !f.isFile()) throw new java.io.FileNotFoundException("page");
+        // a page downloaded before this app was updated is older than the one the apps carry (as Prefs.dashboardUrl)
+        long installed = 0;
+        try { installed = getContext().getPackageManager().getPackageInfo(getContext().getPackageName(), 0).lastUpdateTime; }
+        catch (Exception ignored) { }
+        if (f.lastModified() <= installed) throw new java.io.FileNotFoundException("stale");
         return android.os.ParcelFileDescriptor.open(f, android.os.ParcelFileDescriptor.MODE_READ_ONLY);
+    }
+
+    /** the home screen's «القرآن»: the Makkah stream on or off on every TV, as OK does on the screensaver */
+    @Override
+    public android.os.Bundle call(String method, String arg, android.os.Bundle extras) {
+        if (getContext().checkCallingOrSelfPermission("sa.yourtv.v2.screensaver.READ_CONFIG")
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) return null;
+        android.os.Bundle out = new android.os.Bundle();
+        if ("quran".equals(method) && "toggle".equals(arg)) QuranWindow.everywhere(getContext(), !ControlStore.quran(getContext()));
+        out.putBoolean("on", "toggle".equals(arg) ? !ControlStore.quran(getContext()) : ControlStore.quran(getContext()));
+        return out;
     }
 
     @Override public String getType(Uri uri) { return null; }

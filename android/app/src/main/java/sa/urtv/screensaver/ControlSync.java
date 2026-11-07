@@ -57,7 +57,7 @@ final class ControlSync {
             if (!peer.matches("[0-9.]{7,15}")) continue;
             try {
                 JSONObject o = new JSONObject(new String(fetch(peer, key, "/api/sync"), StandardCharsets.UTF_8));
-                if (o.optJSONObject("me") != null) ControlStore.knowTv(c, o.getJSONObject("me"));
+                if (o.optJSONObject("me") != null) ControlStore.knowTv(c, o.getJSONObject("me"), peer);
                 JSONObject secs = o.optJSONObject("sections");
                 for (String s : SECTIONS) {
                     JSONObject x = secs == null ? null : secs.optJSONObject(s);

@@ -110,7 +110,7 @@ final class Arabic {
             if (two != null) { out.append(two); i += 2; continue; }
             if (ch == 'e' && i > 0) { i++; continue; }
             if (ch == 'c' && i + 1 < x.length() && "eiy".indexOf(x.charAt(i + 1)) >= 0) { out.append('س'); i++; continue; }
-            if (ch >= '0' && ch <= '9') out.append((char) ('٠' + (ch - '0')));
+            if (ch >= '0' && ch <= '9') out.append(ch);   // digits stay Western, as on the screen
             else if (LETTERS.containsKey(ch)) out.append(LETTERS.get(ch));
             i++;
         }

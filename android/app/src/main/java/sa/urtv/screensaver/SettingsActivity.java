@@ -86,6 +86,9 @@ public class SettingsActivity extends Activity {
         row("معاينة الشاشة", "شاهد الشاشة الآن", R.drawable.ic_play, new Runnable() { public void run() {
             startActivity(new Intent(SettingsActivity.this, MainActivity.class)); } }).requestFocus();
 
+        row("بث قناة القرآن الكريم", ControlStore.quran(this) ? "يعمل الآن · اضغط للإيقاف" : "اضغط للتشغيل على كل التلفزيونات", R.drawable.ic_play,
+            new Runnable() { public void run() { QuranWindow.everywhere(SettingsActivity.this, !ControlStore.quran(SettingsActivity.this)); recreate(); } });
+
         header("التحكم من الجوال");
         String url = ControlStore.phoneUrl(this);
         row("الرمز السري: " + ControlStore.pin(this), url == null ? "غير متصل بالشبكة" : "الرابط من البيت ومن برا: " + url.replace("http://", ""),
@@ -119,7 +122,7 @@ public class SettingsActivity extends Activity {
         }
 
         header("التطبيق");
-        row("التحديث التلقائي للصفحة", prefs.autoUpdate() ? "يعمل · كل ٦ ساعات" : "متوقف", R.drawable.ic_sync, new Runnable() { public void run() {
+        row("التحديث التلقائي للصفحة", prefs.autoUpdate() ? "يعمل · كل 6 ساعات" : "متوقف", R.drawable.ic_sync, new Runnable() { public void run() {
             prefs.setAutoUpdate(!prefs.autoUpdate()); render(); } });
         row("تحقق من التحديث الآن", null, R.drawable.ic_sync, new Runnable() { public void run() { updateNow(); } });
         row("تحديث التطبيق", AppUpdater.status().isEmpty() ? "ينزّل آخر نسخة ويثبّتها من التلفزيون نفسه" : AppUpdater.status(),
@@ -198,7 +201,7 @@ public class SettingsActivity extends Activity {
 
     private void addTeam(String id, String name) {
         if (prefs.addTeam(id, name)) toast("تمت متابعة " + name);
-        else toast(prefs.teams().size() >= Prefs.MAX_TEAMS ? "الحد الأعلى ١٠ فرق" : "متابَع مسبقاً");
+        else toast(prefs.teams().size() >= Prefs.MAX_TEAMS ? "الحد الأعلى 10 فرق" : "متابَع مسبقاً");
         render();
     }
 
@@ -442,7 +445,7 @@ public class SettingsActivity extends Activity {
 
     private static String arabicNum(int n) {
         StringBuilder b = new StringBuilder();
-        for (char c : String.valueOf(n).toCharArray()) b.append((char) ('٠' + (c - '0')));
+        b.append(n);   // Western digits, as on the screen
         return b.toString();
     }
 

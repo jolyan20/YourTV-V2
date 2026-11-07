@@ -77,7 +77,10 @@ public class MainActivity extends Activity {
             case KeyEvent.KEYCODE_NUMPAD_ENTER:
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
                 if (e.getAction() == KeyEvent.ACTION_UP) {
-                    QuranWindow.everywhere(this, !quran.isOn());   // on every TV at the same moment
+                    if (web != null) web.evaluateJavascript("window.cardAction ? cardAction() : false", v -> {
+                        if (!"true".equals(v)) QuranWindow.everywhere(this, !quran.isOn());   // no card action: the stream
+                    });
+                    else QuranWindow.everywhere(this, !quran.isOn());   // on every TV at the same moment
                 }
                 return true;
             case KeyEvent.KEYCODE_DPAD_LEFT:     // the screens (family, each person): next and back
