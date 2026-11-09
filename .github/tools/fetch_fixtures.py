@@ -180,38 +180,54 @@ CLUB_SCOPE = {"5649": "4668", "5650": "4668"}
 SEARCH_BUDGET, RETRY_DAYS = 60, 7
 
 
+DOMESTIC = {"4668", "4328", "4335", "4332"}
+
+
 def search_club(name, league):
-    """TheSportsDB's id of an ESPN club name: one that plays in the league if the search finds several;
-    "" when none fits, None when TheSportsDB did not answer"""
-    answered = False
+    """TheSportsDB's id of an ESPN club name, or "" when none fits (None when TheSportsDB did not answer). In a
+    country's league only a club that plays in it counts (a search for «Al Hilal» also finds Sudan's and Libya's);
+    in a continental cup, one club of that name that plays in one of the screen's leagues or in the cup itself."""
+    answered, found = False, {}
     for q in dict.fromkeys([name, re.sub(r"^Al ", "Al-", name)]):
         j = get(SDB + "searchteams.php?t=" + urllib.parse.quote(q), pace=2.5)
         if j is None:
             continue
         answered = True
-        teams = [t for t in (j.get("teams") or []) if t and t.get("idTeam") and (t.get("strSport") or "Soccer") == "Soccer"]
-        named = [t for t in teams if any(name_like(n, name) and (set(words(n)) <= set(words(name)) or set(words(name)) <= set(words(n)))
-                                         for n in [t.get("strTeam") or ""] + (t.get("strTeamAlternate") or "").split(",") if n.strip())]
-        here = [t for t in named if league in {str(t.get(k)) for k in ("idLeague", "idLeague2", "idLeague3", "idLeague4",
-                                                                      "idLeague5", "idLeague6", "idLeague7") if t.get(k)}]
-        pick = here[0] if len(here) == 1 else named[0] if len(named) == 1 else None
-        if pick:
-            return str(pick["idTeam"])
-    return "" if answered else None
+        for t in j.get("teams") or []:
+            if not t or not t.get("idTeam") or (t.get("strSport") or "Soccer") != "Soccer":
+                continue
+            names = [t.get("strTeam") or ""] + (t.get("strTeamAlternate") or "").split(",")
+            if any(n.strip() and key(n) == key(name) for n in names) or any(
+                    n.strip() and words(n) and words(name) and (set(words(n)) <= set(words(name)) or set(words(name)) <= set(words(n))) for n in names):
+                found[str(t["idTeam"])] = {str(t.get(k)) for k in ("idLeague", "idLeague2", "idLeague3", "idLeague4",
+                                                                   "idLeague5", "idLeague6", "idLeague7") if t.get(k)}
+    if not answered:
+        return None
+    here = [i for i, ls in found.items() if league in ls]
+    if league not in DOMESTIC and not here:
+        here = [i for i, ls in found.items() if ls & DOMESTIC]
+    return here[0] if len(here) == 1 else ""
 
 
 class Clubs:
     """{scope|name: [id or "", day searched]}, kept between runs in fixtures/clubs.json"""
+    VERSION = 2   # 1 took a club of the same name from another country
+
     def __init__(self, prev):
         try:
             self.map = json.loads(prev.read_text(encoding="utf-8"))
         except Exception:
             self.map = {}
+        if self.map.get("_version") != [self.VERSION, ""]:
+            self.map = {"_version": [self.VERSION, ""]}
         self.budget, self.searched = SEARCH_BUDGET, 0
 
     def id(self, league, name):
         k = CLUB_SCOPE.get(league, league) + "|" + key(name)
         v = self.map.get(k)
+        if not v and league not in DOMESTIC and CLUB_SCOPE.get(league, league) not in DOMESTIC:
+            # a continental cup's club already found in its own league
+            v = next((self.map[d + "|" + key(name)] for d in sorted(DOMESTIC) if (self.map.get(d + "|" + key(name)) or [""])[0]), None)
         today = datetime.date.today()
         if v and (v[0] or (today - datetime.date.fromisoformat(v[1])).days < RETRY_DAYS):
             return v[0] or None
@@ -292,7 +308,7 @@ def main():
         report["leagues"].append(row)
         print(json.dumps(row, ensure_ascii=False), flush=True)
     clubs.save()
-    report["clubsSearched"], report["clubsKnown"] = clubs.searched, sum(1 for v in clubs.map.values() if v[0])
+    report["clubsSearched"], report["clubsKnown"] = clubs.searched, sum(1 for k, v in clubs.map.items() if v[0] and k != "_version")
     (OUT / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
     if not any(r.get("games") for r in report["leagues"]):
         sys.exit("no league answered")
