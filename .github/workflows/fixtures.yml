@@ -1,0 +1,49 @@
+name: Match files
+
+# The games of the screen's leagues from yesterday to a month ahead, one small JSON per league
+# (.github/tools/fetch_fixtures.py), pushed to the data-fixtures branch. The screen reads them from
+# raw.githubusercontent.com at once on start and whenever ESPN and TheSportsDB do not answer it, so today's games and
+# the followed teams' next games never wait on a slow or limited API. Every three hours, by hand, or when the tool changes.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '7 */3 * * *'
+  push:
+    branches: [master]
+    paths:
+      - '.github/tools/fetch_fixtures.py'
+      - '.github/workflows/fixtures.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fixtures
+  cancel-in-progress: false
+
+jobs:
+  fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: The last run's files, kept for a league that answers nothing this time
+        run: |
+          mkdir -p prev
+          git fetch --depth=1 origin data-fixtures 2>/dev/null && git archive FETCH_HEAD | tar -x -C prev || true
+      - run: python3 -u .github/tools/fetch_fixtures.py
+        env:
+          FIXTURES_PREV: prev/fixtures
+      - name: Push to data-fixtures
+        if: always()
+        run: |
+          [ -n "$(ls fixtures/*.json 2>/dev/null)" ] || exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mv fixtures /tmp/fixtures
+          git checkout -q --orphan data-fixtures
+          git rm -rfq --cached . && git clean -fdqx
+          mv /tmp/fixtures fixtures
+          git add fixtures
+          git commit -qm "Match files $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -qf origin data-fixtures

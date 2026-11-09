@@ -1,0 +1,233 @@
+#!/usr/bin/env python3
+"""The games of the leagues the screen shows, from yesterday to a month ahead, one small JSON per league, for the
+screen to read when ESPN and TheSportsDB do not answer it (and at once on start, before they do). Run in CI
+(.github/workflows/fixtures.yml) every few hours; both APIs are unreachable from the dev container, so the report
+(fixtures/report.json) says what each answered in the real run.
+
+ESPN's scoreboard gives the whole window in one or a few calls; TheSportsDB's eventsday.php gives the coming week
+with its own team ids (the ids the screen follows teams by). A game both list is kept once, TheSportsDB's copy with
+ESPN's crests if it has none; an ESPN-only game takes TheSportsDB's ids for its teams where the league's other games
+name them. A league where both failed keeps its last file, marked "stale".
+
+Out: fixtures/<TheSportsDB league id>.json = {"id", "league", "updated", "stale", "events": [...]}, events in
+TheSportsDB's shape (the screen's espnEvent() makes the same shape), and fixtures/report.json.
+"""
+import datetime
+import json
+import os
+import re
+import sys
+import time
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+SDB = "https://www.thesportsdb.com/api/v1/json/123/"
+ESPN = "https://site.api.espn.com/apis/site/v2/sports/soccer/{}/scoreboard"
+# the screen's TOP_LEAGUES, with ESPN's names for each (the first that answers is kept and reported)
+LEAGUES = [
+    ("4668", "دوري روشن", ["ksa.1"]),
+    ("5649", "كأس الملك", ["ksa.kings_cup", "ksa.kings.cup", "ksa.cup"]),
+    ("5650", "كأس السوبر السعودي", ["ksa.super_cup", "ksa.super.cup"]),
+    ("4719", "أبطال آسيا للنخبة", ["afc.champions", "afc.cl", "afc.champions_elite"]),
+    ("4480", "دوري أبطال أوروبا", ["uefa.champions"]),
+    ("4328", "الدوري الإنجليزي", ["eng.1"]),
+    ("4335", "الدوري الإسباني", ["esp.1"]),
+    ("4332", "الدوري الإيطالي", ["ita.1"]),
+]
+BACK_DAYS, AHEAD_DAYS, SDB_DAYS = 1, 30, 8
+OUT = Path(os.environ.get("FIXTURES_OUT", "fixtures"))
+PREV = Path(os.environ.get("FIXTURES_PREV", "prev/fixtures"))
+KEEP = ("idEvent", "idLeague", "strLeague", "strLeagueBadge", "strTimestamp", "dateEvent", "strTime", "strHomeTeam",
+        "strAwayTeam", "idHomeTeam", "idAwayTeam", "strHomeTeamBadge", "strAwayTeamBadge", "intHomeScore",
+        "intAwayScore", "strStatus", "strProgress", "intRound", "strSeason", "strVenue")
+
+
+def get(url, pace=0.0, tries=4):
+    """JSON or None; TheSportsDB's free key is paced and backs off on 429."""
+    for attempt in range(tries):
+        if pace:
+            time.sleep(pace)
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "yourtv-v2-fixtures", "Accept": "application/json"})
+            with urllib.request.urlopen(req, timeout=40) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            if e.code == 429:
+                time.sleep(20 * (attempt + 1))
+                continue
+            if e.code in (400, 404):
+                return None
+        except Exception:
+            time.sleep(3)
+    return None
+
+
+def key(name):
+    s = re.sub(r"\b(fc|sc|cf|afc|club|saudi club)\b", "", str(name).lower())
+    return re.sub(r"^al ", "al", re.sub(r"[^a-z0-9]+", " ", s).strip())
+
+
+def words(name):
+    return [w for w in key(name).split() if len(w) > 2 and w not in ("al", "fc", "sc", "sfc", "club", "cf", "de", "the", "united", "city")]
+
+
+def name_like(a, b):
+    return key(a) == key(b) or bool(set(words(a)) & set(words(b)))
+
+
+def same_teams(a, b):
+    """both teams alike, either way round (one alone is not enough: Real Madrid and Real Sociedad kick off together)"""
+    h, w, x, y = a.get("strHomeTeam", ""), a.get("strAwayTeam", ""), b.get("strHomeTeam", ""), b.get("strAwayTeam", "")
+    return (name_like(h, x) and name_like(w, y)) or (name_like(h, y) and name_like(w, x))
+
+
+def when(ev):
+    s = ev.get("strTimestamp") or "{}T{}".format(ev.get("dateEvent"), ev.get("strTime") or "00:00:00")
+    s = s.replace("Z", "").split("+")[0]
+    try:
+        return datetime.datetime.fromisoformat(s).replace(tzinfo=datetime.timezone.utc)
+    except ValueError:
+        return None
+
+
+def espn_event(e, league, lg_logo):
+    c = (e.get("competitions") or [{}])[0]
+    st = e.get("status") or c.get("status") or {}
+    ty = st.get("type") or {}
+    side = {x.get("homeAway"): x for x in c.get("competitors") or []}
+    home, away = side.get("home") or {}, side.get("away") or {}
+    pre, state, name = ty.get("state") == "pre", ty.get("state"), str(ty.get("name") or "")
+    if "POSTPONED" in name: status = "Postponed"
+    elif "CANCEL" in name: status = "Cancelled"
+    elif "ABANDON" in name: status = "Abandoned"
+    elif "SUSPEND" in name or "DELAY" in name: status = "Suspended"
+    elif "HALFTIME" in name: status = "HT"
+    elif state == "post": status = "PEN" if "PEN" in name else "AET" if ("AET" in name or "EXTRA" in name) else "FT"
+    elif state == "in": status = "LIVE"
+    else: status = "NS"
+
+    def score(x):
+        v = x.get("score")
+        if pre or v in (None, ""):
+            return None
+        v = v.get("value") if isinstance(v, dict) else v
+        return re.sub(r"\.0$", "", str(v))
+
+    def logo(x):
+        t = x.get("team") or {}
+        return t.get("logo") or ((t.get("logos") or [{}])[0]).get("href") or ""
+
+    t = when({"strTimestamp": str(e.get("date") or "").replace("Z", "")})
+    return {"idEvent": "espn" + str(e.get("id")), "idLeague": league, "strLeagueBadge": lg_logo,
+            "strTimestamp": t.strftime("%Y-%m-%dT%H:%M:%S") if t else "",
+            "strHomeTeam": (home.get("team") or {}).get("displayName") or "", "strAwayTeam": (away.get("team") or {}).get("displayName") or "",
+            "idHomeTeam": "espn" + str((home.get("team") or {}).get("id")), "idAwayTeam": "espn" + str((away.get("team") or {}).get("id")),
+            "strHomeTeamBadge": logo(home), "strAwayTeamBadge": logo(away), "intHomeScore": score(home), "intAwayScore": score(away),
+            "strStatus": status, "strProgress": re.sub(r"[^0-9+]", "", str(st.get("displayClock") or "")) if state == "in" else ""}
+
+
+def espn_league(league, slugs, start, end):
+    """(slug that answered, events) or (None, None)"""
+    for slug in slugs:
+        got, ok = {}, False
+        j = get(ESPN.format(slug) + "?limit=500&dates={}-{}".format(start.strftime("%Y%m%d"), end.strftime("%Y%m%d")))
+        days = [] if j and j.get("events") else [start + datetime.timedelta(days=i) for i in range((end - start).days + 1)]
+        pages = [j] if j and j.get("events") else []
+        for d in days:   # no range answer: a day at a time
+            pages.append(get(ESPN.format(slug) + "?limit=200&dates=" + d.strftime("%Y%m%d")))
+        for p in pages:
+            if not p or not isinstance(p.get("events"), list):
+                continue
+            ok = True
+            lg = (p.get("leagues") or [{}])[0]
+            logo = ((lg.get("logos") or [{}])[0]).get("href") or ""
+            for e in p["events"]:
+                ev = espn_event(e, league, logo)
+                if ev["strHomeTeam"] and ev["strAwayTeam"]:
+                    got[ev["idEvent"]] = ev
+        if ok:
+            return slug, list(got.values())
+    return None, None
+
+
+def sdb_league(league, start):
+    """TheSportsDB's games of the coming week, with its own ids; None when it never answered"""
+    got, ok = {}, False
+    paths = ["eventsday.php?d={}&l={}".format((start + datetime.timedelta(days=i)).strftime("%Y-%m-%d"), league) for i in range(SDB_DAYS)]
+    paths += ["eventsnextleague.php?id=" + league, "eventspastleague.php?id=" + league]
+    for p in paths:
+        j = get(SDB + p, pace=2.5)
+        if j is None:
+            continue
+        ok = True
+        for ev in (j.get("events") or []):
+            if ev and ev.get("idEvent"):
+                got[str(ev["idEvent"])] = {k: ev.get(k) for k in KEEP if ev.get(k) not in (None, "")}
+    return list(got.values()) if ok else None
+
+
+def merge(sdb, espn):
+    out = list(sdb or [])
+    ids = {}   # ESPN's team name -> TheSportsDB's id, from the league's own games
+    for ev in out:
+        for side in ("Home", "Away"):
+            ids[key(ev.get("str%sTeam" % side, ""))] = ev.get("id%sTeam" % side)
+    for e in espn or []:
+        te = when(e)
+        twin = next((s for s in out if te and when(s) and abs((when(s) - te).total_seconds()) < 1200 and same_teams(s, e)), None)
+        if twin:   # one game: TheSportsDB's ids, ESPN's crests and score where TheSportsDB has none
+            for k in ("strHomeTeamBadge", "strAwayTeamBadge", "strLeagueBadge", "intHomeScore", "intAwayScore"):
+                if not twin.get(k) and e.get(k):
+                    twin[k] = e[k]
+            if e.get("strStatus") not in ("NS", "LIVE") and twin.get("strStatus") in (None, "", "NS", "Not Started"):
+                twin["strStatus"] = e["strStatus"]
+            continue
+        for side in ("Home", "Away"):
+            n = e["str%sTeam" % side]
+            # the same name, or one name's words all in the other's, and only one such team in the league
+            near = {v for k, v in ids.items() if v and words(k) and words(n) and (set(words(k)) <= set(words(n)) or set(words(n)) <= set(words(k)))}
+            sid = ids.get(key(n)) or (near.pop() if len(near) == 1 else None)
+            if sid:
+                e["id%sTeam" % side] = sid
+        out.append(e)
+    return sorted(out, key=lambda ev: ev.get("strTimestamp") or "")
+
+
+def main():
+    only = set(sys.argv[1:])
+    OUT.mkdir(parents=True, exist_ok=True)
+    today = datetime.datetime.now(datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    start, end = today - datetime.timedelta(days=BACK_DAYS), today + datetime.timedelta(days=AHEAD_DAYS)
+    report = {"updated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "leagues": []}
+    for lid, name, slugs in LEAGUES:
+        if only and lid not in only:
+            continue
+        slug, espn = espn_league(lid, slugs, start, end)
+        sdb = sdb_league(lid, start)
+        row = {"id": lid, "league": name, "espn": slug, "espnGames": None if espn is None else len(espn),
+               "sdbGames": None if sdb is None else len(sdb)}
+        path = OUT / (lid + ".json")
+        if espn is None and sdb is None:
+            prev = PREV / (lid + ".json")
+            if prev.exists():
+                data = json.loads(prev.read_text(encoding="utf-8"))
+                data["stale"] = True
+                path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+            row["kept"] = prev.exists()
+        else:
+            events = [ev for ev in merge(sdb, espn) if (lambda t: t is None or start <= t <= end + datetime.timedelta(days=1))(when(ev))]
+            for ev in events:
+                ev["idLeague"] = lid
+            path.write_text(json.dumps({"id": lid, "league": name, "updated": report["updated"], "stale": False, "events": events},
+                                       ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+            row["games"] = len(events)
+        report["leagues"].append(row)
+        print(json.dumps(row, ensure_ascii=False), flush=True)
+    (OUT / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
+    if not any(r.get("games") for r in report["leagues"]):
+        sys.exit("no league answered")
+
+
+if __name__ == "__main__":
+    main()

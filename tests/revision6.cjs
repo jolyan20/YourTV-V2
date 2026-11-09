@@ -4,7 +4,7 @@ const fn=src.slice(src.indexOf('function playAdhan(cur){'),src.indexOf('// short
 function setup(files,mode='full'){
  let tags=[],restored=0; const classes=()=>({add(){},remove(){}});
  const host={classList:classes(),replaceChildren(){},appendChild(){},textContent:''},week={classList:classes()};
- const ctx={ADHAN_DONE:'',ADHAN_FINISHED:'',ADHAN_ACTIVE:false,todayKey:()=> 'day',CONFIG:{widget:false},adhanMode:()=>mode,CTRL:{files},prayerName:()=> 'الظهر',renderPanel:()=>restored++,setTimeout:()=>1,clearTimeout(){},document:{getElementById:()=>host,querySelector:()=>week,createElement:(tag)=>{const m={tag,currentTime:0,setAttribute(){},removeAttribute(){},load(){},pause(){},play(){return Promise.resolve();}};tags.push(m);return m;}}};
+ const ctx={KAHF_AUDIO:null,ADHAN_DONE:'',ADHAN_FINISHED:'',ADHAN_ACTIVE:false,todayKey:()=> 'day',CONFIG:{widget:false},adhanMode:()=>mode,CTRL:{files},prayerName:()=> 'الظهر',renderPanel:()=>restored++,setTimeout:()=>1,clearTimeout(){},document:{getElementById:()=>host,querySelector:()=>week,createElement:(tag)=>{const m={tag,currentTime:0,setAttribute(){},removeAttribute(){},load(){},pause(){},play(){return Promise.resolve();}};tags.push(m);return m;}}};
  vm.createContext(ctx);vm.runInContext(fn,ctx);return {ctx,tags,restored:()=>restored,play:()=>ctx.playAdhan({key:'Dhuhr'})};
 }
 const f={size:2000,at:1};

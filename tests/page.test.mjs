@@ -42,7 +42,7 @@ async function open(file, hash, { width = 1920, height = 1080, seed = true } = {
   return { p, ctx, errors };
 }
 
-// ---- both pages, three screen sizes: no errors, shown, clock right, nothing off screen, Arabic digits
+// ---- both pages, three screen sizes: no errors, shown, clock right, nothing off screen, Western digits (4.21)
 for (const file of ['urtv.html', 'tv.html']) {
   for (const [w, h] of [[1920, 1080], [1280, 720], [960, 540]]) {
     const { p, ctx, errors } = await open(file, 'city=جدة&lat=21.5433&lon=39.1728', { width: w, height: h });
@@ -55,19 +55,17 @@ for (const file of ['urtv.html', 'tv.html']) {
         const b = e.getBoundingClientRect(), cs = getComputedStyle(e);
         return cs.display !== 'none' && b.width && (b.left < -2 || b.right > innerWidth + 2 || b.bottom > innerHeight + 2);
       }).map(e => e.className || e.id || e.tagName).slice(0, 5);
-      // the time under the watch is written as the household writes it (02:30م, then 14:30): the rest in Arabic digits
-      const cw = document.querySelector('.clockwrap'); cw.style.display = 'none';
-      const latin = (document.querySelector('.stage').innerText.match(/[0-9]+/g) || []).filter(x => x !== '500');
-      cw.style.display = '';
+      // every number in Western digits, as the household reads them (4.21): no Arabic-Indic digit anywhere
+      const indic = document.querySelector('.stage').innerText.match(/[٠-٩۰-۹]+/g) || [];
       return { hh, mm, h: toN(hh), m: toN(mm), ap: document.getElementById('ck-ap').textContent,
-               sub: document.getElementById('clock-sub').textContent, off, latin,
+               sub: document.getElementById('clock-sub').textContent, off, indic,
                photo: !!document.querySelector('.photo').style.backgroundImage };
     });
     check(`${tag}: 12-hour clock under the watch (02:30م)`, /^[0-9]{2}$/.test(r.hh) && r.h >= 1 && r.h <= 12
       && /^[0-9]{2}$/.test(r.mm) && r.m < 60 && ['ص', 'م'].includes(r.ap), JSON.stringify(r));
     check(`${tag}: city from the settings`, r.sub === 'بتوقيت جدة', r.sub);
     check(`${tag}: nothing off screen`, !r.off.length, r.off.join(', '));
-    check(`${tag}: no Latin digits (except S&P 500)`, !r.latin.length, r.latin.join(' '));
+    check(`${tag}: Western digits only`, !r.indic.length, r.indic.join(' '));
     check(`${tag}: a background photo`, r.photo);
     await ctx.close();
   }
@@ -266,7 +264,7 @@ for (const [width, height] of [[1920, 1080], [1280, 720], [960, 540]]) {
   await p.goto(page('tv.html') + '#teams=136013&panel=verse');
   await p.waitForTimeout(800);
   // the fixture row: home name (goals) × (goals) away name
-  const score = t => /الهلال\D*\(٢\)\D*\(١\)\D*النصر/.test(t);
+  const score = t => /الهلال\D*\(2\)\D*\(1\)\D*النصر/.test(t);
   const slot = () => p.evaluate(() => matchCard().join(' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
   const game = (id, hoursAgo, score, status) => `({idEvent:'${id}', strHomeTeam:'Al-Hilal', strAwayTeam:'Al-Nassr',
     strTimestamp:new Date(Date.now() - ${hoursAgo} * 36e5).toISOString(), intHomeScore:${score ? score[0] : null},
@@ -313,9 +311,34 @@ for (const [width, height] of [[1920, 1080], [1280, 720], [960, 540]]) {
   await p.goto(page('tv.html') + '#panel=verse');
   await p.waitForFunction(() => TODAY_GAMES.length > 0, null, { timeout: 15000 }).catch(() => {});
   const t = await p.evaluate(() => document.getElementById('match-row').innerText.replace(/\s+/g, ' '));
-  check("today's games from the second source", /الهلال.*النصر.*٢.*١.*مباشرة.*٥٥/.test(t), t);
+  check("today's games from the second source", /الهلال.*النصر.*2.*1.*مباشرة.*55/.test(t), t);
   const img = await p.evaluate(() => [...document.querySelectorAll('#match-row img')].map(i => i.getAttribute('src')).join(' '));
   check("its crests load as they are (no /tiny)", /espncdn\.com\/h\.png(\s|$)/.test(img), img);
+  await ctx.close();
+}
+
+// ---- ESPN and TheSportsDB both down: today's games and the followed team's next ones from the match files
+{
+  const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+  const now = Date.now(), iso = t => new Date(t).toISOString().slice(0, 19);
+  const files = [];
+  await ctx.route(/^https?:/, r => {
+    const u = r.request().url();
+    if(!/raw\.githubusercontent\.com\/jolyan20\/YourTV-V2\/data-fixtures\/fixtures\//.test(u)) return r.abort();
+    files.push(u);
+    const events = /\/4668\.json$/.test(u) ? [
+      { idEvent: 'f1', idLeague: '4668', strTimestamp: iso(now + 2 * 36e5), strHomeTeam: 'Al-Hilal', strAwayTeam: 'Al-Nassr', idHomeTeam: '136013', idAwayTeam: '136137', strStatus: 'NS' },
+      { idEvent: 'f2', idLeague: '4668', strTimestamp: iso(now + 5 * 864e5), strHomeTeam: 'Al-Ittihad', strAwayTeam: 'Al-Hilal', idHomeTeam: '136135', idAwayTeam: '136013', strStatus: 'NS' }] : [];
+    r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ id: '4668', events }) });
+  });
+  const p = await ctx.newPage();
+  await p.goto(page('tv.html') + '#teams=136013&panel=verse');
+  await p.waitForFunction(() => TODAY_GAMES.length > 0 && TEAM_FIX.length > 1, null, { timeout: 15000 }).catch(() => {});
+  const t = await p.evaluate(() => document.getElementById('match-row').innerText.replace(/\s+/g, ' '));
+  check("today's games from the match file when both APIs are down", /الهلال.*النصر/.test(t) && !/تعذر|جارٍ/.test(t), t);
+  const card = await p.evaluate(() => matchCard().join(' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '));
+  check("the followed team's next games from the match file", /الاتحاد/.test(card) && /النصر/.test(card), card.slice(0, 300));
+  check('every league asked from the files', files.length >= 8, files.length);
   await ctx.close();
 }
 

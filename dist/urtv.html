@@ -2350,8 +2350,20 @@ async function teamLeagues(){
   try{ localStorage.setItem('teamLeagues', JSON.stringify(cache)); }catch(e){}
   return [...new Set(CONFIG.teamIds.flatMap(id => cache[id] || []))];
 }
+// the followed teams' games in the screen's leagues from the match files, at once (TheSportsDB's rounds come slowly)
+async function teamFromFiles(){
+  const mine = new Set(CONFIG.teamIds), now = Date.now();
+  const inWindow = ev => { const t = toDate(ev).getTime(); return t >= now - 86400000 && t <= now + 30*86400000; };
+  const names = followedKeys(), ours = ev => mine.has(String(ev.idHomeTeam)) || mine.has(String(ev.idAwayTeam))
+    || names.has(teamKey(ev.strHomeTeam)) || names.has(teamKey(ev.strAwayTeam));
+  const filed = (await Promise.all(TOP_LEAGUES.map(([id]) => fixtureFile(id)))).flat()
+    .filter(ev => ev && ev.idEvent && ours(ev) && inWindow(ev));
+  if(filed.length && !TEAM_FIX.length){ TEAM_FIX = filed; buildToday(); if(CONFIG.panel === 'matches') renderPanel(false); }
+  return filed;
+}
 async function loadTeamFixtures(){
   const mine = new Set(CONFIG.teamIds), now = Date.now(), seen = new Set(), out = [];
+  const filed = await teamFromFiles();
   for(const league of await teamLeagues()){
     for(const ev of (await leagueGames(league, now - 86400000, now + 30*86400000, 6*3600000, true)) || []){
       if(!ev || seen.has(ev.idEvent) || !(mine.has(String(ev.idHomeTeam)) || mine.has(String(ev.idAwayTeam)))) continue;
@@ -2360,6 +2372,7 @@ async function loadTeamFixtures(){
       seen.add(ev.idEvent); out.push(ev);
     }
   }
+  filed.forEach(f => { if(!out.some(ev => ev.idEvent === f.idEvent || sameGame(ev, f))) out.push(f); });
   if(out.length) TEAM_FIX = out;
   buildToday();
 }
@@ -2820,7 +2833,7 @@ async function loadChannels(ev){
 // the followed teams' games, one list
 function teamEvents(){
   const seen = new Set(), out = [];
-  const add = ev => { if(ev && ev.idEvent && !seen.has(ev.idEvent)){ seen.add(ev.idEvent); out.push(ev); } };
+  const add = ev => { if(ev && ev.idEvent && !seen.has(ev.idEvent) && !out.some(o => sameGame(o, ev))){ seen.add(ev.idEvent); out.push(ev); } };
   CONFIG.teamIds.forEach(id => { add(MATCHES[id]); (NEXT_LIST[id] || []).forEach(add); });
   TEAM_FIX.forEach(add);
   return out;
@@ -2861,6 +2874,19 @@ let TODAY_GAMES = [], TODAY_BY = {}, TODAY_DONE = new Set(), TODAY_DAY = '';
 (() => { try{ const v = JSON.parse(localStorage.getItem('todayGames') || 'null');
   if(v && v.day === IDF('en-CA',{timeZone:CONFIG.timezone}).format(new Date())){ TODAY_DAY = v.day; TODAY_BY = v.by || {}; }
 }catch(e){} })();
+// The match files GitHub makes every three hours (.github/workflows/fixtures.yml, branch data-fixtures): every game of
+// the screen's leagues from yesterday to a month ahead. Read at once on start (today's games and the followed teams'
+// next ones show before any API answers), and for a day neither ESPN nor TheSportsDB answered.
+const FIX_BASE = 'https://raw.githubusercontent.com/jolyan20/YourTV-V2/data-fixtures/fixtures/';
+const FIX_CACHE = {};
+async function fixtureFile(league){
+  const c = FIX_CACHE[league];
+  if(c && Date.now() - c.at < 30*60000) return c.events;
+  const j = await getJSON(FIX_BASE + league + '.json', null);
+  if(!j || !Array.isArray(j.events)) return c ? c.events : null;
+  FIX_CACHE[league] = {at: Date.now(), events: j.events};
+  return j.events;
+}
 // one call per league and day (walking the rounds took dozens and got the household's address blocked). The API
 // files games by their UTC date, the screen by Riyadh's: a Riyadh day also holds the UTC day before from 21:00
 // (the games after midnight here), so that day is asked too when `early` (once a day, and while such a game is on).
@@ -2900,7 +2926,8 @@ async function espnDay(league, d){
 async function dayGames(league, early){
   const p = riyadhParts(), day = Date.UTC(p.y, p.mo - 1, p.d), iso = t => new Date(t).toISOString().slice(0, 10);
   const sdb = async d => { const j = await sdbGet(`eventsday.php?d=${d}&l=${league}`) || await sdbGet(`eventsday.php?d=${d}&l=${league}`); return j ? (j.events || []) : null; };
-  const one = async d => { const e = await espnDay(league, d); return e !== null ? e : sdb(d); };
+  const file = async d => { const f = await fixtureFile(league); return f && f.filter(ev => toDate(ev).toISOString().slice(0, 10) === d); };
+  const one = async d => { const e = await espnDay(league, d); if(e !== null) return e; const g = await sdb(d); return g !== null ? g : file(d); };
   // ESPN files a day by US time: the day after is asked too, so the evening games here are never missed
   const days = early ? [day - 86400000, day, day + 86400000] : [day, day + 86400000];
   const got = await Promise.all(days.map(t => one(iso(t))));
@@ -2914,10 +2941,25 @@ function nameLike(a, b){
   const A = w(a), B = w(b);
   return teamKey(a) === teamKey(b) || A.some(x => B.includes(x));
 }
+// one game listed by two sources: the same kick-off (within 20 minutes) and both teams alike (home and away may be
+// named the other way round); one team alone is not enough («Real Madrid» and «Real Sociedad» kick off together)
+function sameGame(a, b){
+  if(Math.abs(toDate(a) - toDate(b)) >= 20*60000) return false;
+  const [h, w] = [a.strHomeTeam, a.strAwayTeam], [x, y] = [b.strHomeTeam, b.strAwayTeam];
+  return (nameLike(h, x) && nameLike(w, y)) || (nameLike(h, y) && nameLike(w, x));
+}
 let TODAY_FAILED = new Set();
 async function loadToday(){
   const day = IDF('en-CA',{timeZone:CONFIG.timezone}).format(new Date());
   if(day !== TODAY_DAY){ TODAY_DAY = day; TODAY_BY = {}; TODAY_DONE = new Set(); }
+  // the match files at once (all leagues together), then each league's own answer replaces its file's games
+  await Promise.all(TOP_LEAGUES.map(async ([id, name], rank) => {
+    const f = await fixtureFile(id);
+    if(f && !TODAY_DONE.has(id) && !(TODAY_BY[id] || []).length)
+      TODAY_BY[id] = f.filter(ev => riyadhDay(toDate(ev)) === day).map(ev => ({ev, rank, lg: name}));
+  }));
+  buildToday();
+  teamFromFiles();   // the followed teams' next games too, before the slow lookups
   for(const [rank, [id, name]] of TOP_LEAGUES.entries()){
     const games = await dayGames(id, true);   // live scores: refreshLive
     if(games === null){ TODAY_FAILED.add(id); renderMatches(); continue; }
@@ -2929,6 +2971,20 @@ async function loadToday(){
   try{ localStorage.setItem('todayGames', JSON.stringify({day, by: TODAY_BY})); }catch(e){}
   if(!loadToday.once){ loadToday.once = true; loadTeamFixtures(); }   // the followed teams' month, after today's games
 }
+// the followed teams' names as the providers spell them, kept on the device: a game from ESPN alone (or a match file
+// made while TheSportsDB was down) carries ESPN's ids, so it is known as theirs by the name
+function followedKeys(){
+  let saved = {};
+  try{ saved = JSON.parse(localStorage.getItem('teamNames') || '{}') || {}; }catch(e){}
+  const mine = new Set(CONFIG.teamIds), before = JSON.stringify(saved);
+  [...Object.values(MATCHES), ...Object.values(NEXT_LIST).flat(), ...Object.values(RESULTS).flat(), ...TEAM_FIX].forEach(ev => {
+    if(!ev) return;
+    if(mine.has(String(ev.idHomeTeam)) && ev.strHomeTeam) saved[ev.idHomeTeam] = ev.strHomeTeam;
+    if(mine.has(String(ev.idAwayTeam)) && ev.strAwayTeam) saved[ev.idAwayTeam] = ev.strAwayTeam;
+  });
+  if(JSON.stringify(saved) !== before) try{ localStorage.setItem('teamNames', JSON.stringify(saved)); }catch(e){}
+  return new Set(CONFIG.teamIds.map(id => saved[id]).filter(Boolean).map(teamKey));
+}
 function buildToday(){
   const got = TOP_LEAGUES.map(([id]) => TODAY_BY[id] || []);
   const mine = new Set(CONFIG.teamIds);
@@ -2937,9 +2993,7 @@ function buildToday(){
   const seen = new Set(got.flat().map(x => x.ev.idEvent)), day = IDF('en-CA',{timeZone:CONFIG.timezone}).format(new Date());
   // the followed teams by name too (ESPN's games carry ESPN's ids), and a game both sources list shown once
   const ownAll = [...Object.values(MATCHES), ...Object.values(NEXT_LIST).flat(), ...TEAM_FIX].filter(ev => ev && ev.idEvent);
-  const mineNames = new Set();
-  ownAll.forEach(ev => { if(mine.has(String(ev.idHomeTeam))) mineNames.add(teamKey(ev.strHomeTeam)); if(mine.has(String(ev.idAwayTeam))) mineNames.add(teamKey(ev.strAwayTeam)); });
-  const sameGame = (a, b) => Math.abs(toDate(a) - toDate(b)) < 20*60000 && [a.strHomeTeam, a.strAwayTeam].some(n => [b.strHomeTeam, b.strAwayTeam].some(m => nameLike(n, m)));
+  const mineNames = followedKeys();
   const listed = got.flat().map(x => x.ev);
   const own = ownAll
     .filter(ev => !seen.has(ev.idEvent) && seen.add(ev.idEvent) && riyadhDay(toDate(ev)) === day && !listed.some(l => sameGame(l, ev)))
