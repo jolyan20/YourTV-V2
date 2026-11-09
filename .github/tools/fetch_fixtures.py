@@ -36,7 +36,10 @@ LEAGUES = [
     ("4335", "الدوري الإسباني", ["esp.1"]),
     ("4332", "الدوري الإيطالي", ["ita.1"]),
 ]
-BACK_DAYS, AHEAD_DAYS, SDB_DAYS = 1, 30, 8
+BACK_DAYS, AHEAD_DAYS, SDB_DAYS = 1, 30, 2
+# a hard limit for the whole run (the job stops at 40 minutes): club searches end first, then TheSportsDB is skipped
+START = time.time()
+SEARCH_UNTIL, SDB_UNTIL = START + 12 * 60, START + 25 * 60
 OUT = Path(os.environ.get("FIXTURES_OUT", "fixtures"))
 PREV = Path(os.environ.get("FIXTURES_PREV", "prev/fixtures"))
 KEEP = ("idEvent", "idLeague", "strLeague", "strLeagueBadge", "strTimestamp", "dateEvent", "strTime", "strHomeTeam",
@@ -44,9 +47,11 @@ KEEP = ("idEvent", "idLeague", "strLeague", "strLeagueBadge", "strTimestamp", "d
         "intAwayScore", "strStatus", "strProgress", "intRound", "strSeason", "strVenue")
 
 
-def get(url, pace=0.0, tries=4):
-    """JSON or None; TheSportsDB's free key is paced and backs off on 429."""
+def get(url, pace=0.0, tries=3):
+    """JSON or None; TheSportsDB's free key is paced, waits once on 429 and gives up after its own deadline."""
     for attempt in range(tries):
+        if pace and time.time() > SDB_UNTIL:
+            return None
         if pace:
             time.sleep(pace)
         try:
@@ -55,7 +60,9 @@ def get(url, pace=0.0, tries=4):
                 return json.load(r)
         except urllib.error.HTTPError as e:
             if e.code == 429:
-                time.sleep(20 * (attempt + 1))
+                if pace and attempt:
+                    return None
+                time.sleep(30)
                 continue
             if e.code in (400, 404):
                 return None
@@ -170,7 +177,7 @@ def sdb_league(league, start):
 
 # a cup's clubs are looked up as its country's league's (the same names)
 CLUB_SCOPE = {"5649": "4668", "5650": "4668"}
-SEARCH_BUDGET, RETRY_DAYS = 90, 7
+SEARCH_BUDGET, RETRY_DAYS = 60, 7
 
 
 def search_club(name, league):
@@ -178,7 +185,7 @@ def search_club(name, league):
     "" when none fits, None when TheSportsDB did not answer"""
     answered = False
     for q in dict.fromkeys([name, re.sub(r"^Al ", "Al-", name)]):
-        j = get(SDB + "searchteams.php?t=" + urllib.parse.quote(q), pace=2)
+        j = get(SDB + "searchteams.php?t=" + urllib.parse.quote(q), pace=2.5)
         if j is None:
             continue
         answered = True
@@ -208,14 +215,20 @@ class Clubs:
         today = datetime.date.today()
         if v and (v[0] or (today - datetime.date.fromisoformat(v[1])).days < RETRY_DAYS):
             return v[0] or None
-        if self.budget <= 0:
+        if self.budget <= 0 or time.time() > SEARCH_UNTIL:
             return None
         self.budget -= 1
         found = search_club(name, CLUB_SCOPE.get(league, league))
         self.searched += 1
         if found is not None:
             self.map[k] = [found, today.isoformat()]
+            self.save()   # after each: a run cut short keeps what it found
+        print("club", league, name, "->", found, flush=True)
         return found or None
+
+    def save(self):
+        OUT.mkdir(parents=True, exist_ok=True)
+        (OUT / "clubs.json").write_text(json.dumps(self.map, ensure_ascii=False, indent=0, sort_keys=True), encoding="utf-8")
 
 
 def merge(sdb, espn, clubs=None, league=None):
@@ -278,7 +291,7 @@ def main():
             row["games"] = len(events)
         report["leagues"].append(row)
         print(json.dumps(row, ensure_ascii=False), flush=True)
-    (OUT / "clubs.json").write_text(json.dumps(clubs.map, ensure_ascii=False, indent=0, sort_keys=True), encoding="utf-8")
+    clubs.save()
     report["clubsSearched"], report["clubsKnown"] = clubs.searched, sum(1 for v in clubs.map.values() if v[0])
     (OUT / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
     if not any(r.get("games") for r in report["leagues"]):

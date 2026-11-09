@@ -24,7 +24,7 @@ concurrency:
 jobs:
   fixtures:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 45   # the tool stops itself at about 30
     steps:
       - uses: actions/checkout@v4
       - name: The last run's files, kept for a league that answers nothing this time
