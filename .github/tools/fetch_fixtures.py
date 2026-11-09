@@ -177,7 +177,7 @@ def sdb_league(league, start):
 
 # a cup's clubs are looked up as its country's league's (the same names)
 CLUB_SCOPE = {"5649": "4668", "5650": "4668"}
-SEARCH_BUDGET, RETRY_DAYS = 60, 7
+SEARCH_BUDGET, RETRY_DAYS = 60, 3
 
 
 DOMESTIC = {"4668", "4328", "4335", "4332"}
@@ -187,12 +187,13 @@ def search_club(name, league):
     """TheSportsDB's id of an ESPN club name, or "" when none fits (None when TheSportsDB did not answer). In a
     country's league only a club that plays in it counts (a search for «Al Hilal» also finds Sudan's and Libya's);
     in a continental cup, one club of that name that plays in one of the screen's leagues or in the cup itself."""
-    answered, found, exact_name = False, {}, {}
-    for q in dict.fromkeys([name, re.sub(r"^Al ", "Al-", name)]):
-        j = get(SDB + "searchteams.php?t=" + urllib.parse.quote(q), pace=2.5)
+    missed, found, exact_name = False, {}, {}
+    # TheSportsDB writes Saudi clubs «Al-Hilal»: that spelling first
+    for q in dict.fromkeys([re.sub(r"^Al ", "Al-", name), name]):
+        j = get(SDB + "searchteams.php?t=" + urllib.parse.quote(q), pace=3)
         if j is None:
+            missed = True
             continue
-        answered = True
         for t in j.get("teams") or []:
             if not t or not t.get("idTeam") or (t.get("strSport") or "Soccer") != "Soccer":
                 continue
@@ -202,8 +203,6 @@ def search_club(name, league):
                 exact_name[str(t["idTeam"])] = any(n.strip() and key(n) == key(name) for n in names)
                 found[str(t["idTeam"])] = {str(t.get(k)) for k in ("idLeague", "idLeague2", "idLeague3", "idLeague4",
                                                                    "idLeague5", "idLeague6", "idLeague7") if t.get(k)}
-    if not answered:
-        return None
     here = [i for i, ls in found.items() if league in ls]
     if league not in DOMESTIC and not here:
         here = [i for i, ls in found.items() if ls & DOMESTIC]
@@ -212,7 +211,8 @@ def search_club(name, league):
         # the same club listed more than once (a reserve or an old entry): the oldest id is the club itself
         exact = [i for i in here if exact_name.get(i)]
         here = [min(exact or here, key=lambda i: int(i) if i.isdigit() else 10**12)]
-    return here[0] if here else ""
+    # nothing found while a search went unanswered: not saved as «none», asked again next run
+    return here[0] if here else (None if missed else "")
 
 
 class Clubs:
