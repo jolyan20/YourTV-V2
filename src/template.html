@@ -830,6 +830,32 @@ html:not(.widget) .v2-show .series-copy>b{grid-column:1;grid-row:2;align-self:ce
 html:not(.widget) .v2-show .sp-epl{grid-column:1;grid-row:3;font-size:.9vw}
 html:not(.widget) .v2-show .series-copy .release-left{grid-column:1;grid-row:4;height:auto;font-size:.95vw}
 html:not(.widget) .v2-show .series-copy .release-date{display:none}
+/* R16: the household's notes on the match boxes: bigger crests, the competition at the top of today's game, the
+   numbers clear and without brackets, the side behind as readable as the other, bigger page dots on the card */
+.week li.fx{grid-template-columns:5vw minmax(0,1fr) 5vw;grid-template-rows:auto;column-gap:.6vw;align-items:center;padding:.4vh .5vw}
+.week li.fx .fx-c{align-self:stretch;display:flex;align-items:center;justify-content:center;min-height:0}
+.week li.fx .fx-c img,.week li.fx .fx-c .ball{height:min(6.6vh,100%);width:4.6vw;font-size:4.6vh;object-fit:contain}
+.fx-mid{display:grid;grid-template-rows:auto auto auto;row-gap:.1vh;align-content:center;min-width:0}
+.fx-tm{grid-template-columns:minmax(0,1fr) auto auto auto minmax(0,1fr);font-size:1.25vw}
+.fx-g,.mb-g{display:inline-block;min-width:1.5em;padding:0 .3em;text-align:center;border-radius:6px;line-height:1.3;
+  color:#FFF3D6;background:#ffffff14;border:1px solid #dcb86f66}
+.fx-g{font-size:1.08em}
+.fx-g.pre{color:#E8DFC9;background:transparent;border-color:#dcb86f38}
+.fx-g.win,.fx-g.lead,.mb-g.win,.mb-g.lead{color:#1b1206;border-color:transparent}
+.fx-n.lose,.fx-g.lose,.fx-c.lose,.mb-nm .lose,.mb-g.lose,.mb-cr .lose,.fx-n.behind,.fx-g.behind,.mb-nm .behind,.mb-g.behind{opacity:1}
+.fx-n.lose,.fx-n.behind,.mb-nm .lose,.mb-nm .behind{color:#F6EEDC}
+.mb4.live .mb-sc .mb-g:not(.win):not(.lead){color:#FFF3D6}
+/* today's game: crest | the competition | crest, the crests as large as the row allows */
+.mb-cr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) minmax(0,1fr);align-items:center;justify-items:center}
+.mb-cr img,.mb-cr .ball{height:min(10.5vh,100%);width:6.4vw;font-size:5.8vh}
+.mb-cr .mb-lg{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5vh;height:auto;
+  font-size:.9vw;line-height:1.3;text-align:center;color:var(--gold);white-space:normal}
+.mb-cr .mb-lg span{display:block;height:auto;white-space:normal}
+.mb-cr .mb-lg img{height:3.4vh;width:auto;max-width:3.4vw;font-size:inherit}
+.mb-ft .mb-st{font-size:.85vw}
+.dots{gap:1.3vh}
+.dots i{width:1.25vh;height:1.25vh;min-width:9px;min-height:9px}
+.dots i.on{height:3.4vh}
 /* the dua after the adhan: over the card, for a minute */
 .dua{position:absolute;inset:0;z-index:9;display:none;flex-direction:column;align-items:center;justify-content:center;gap:2.2vh;padding:3vh 3vw;
   border-radius:12px;background:linear-gradient(180deg,rgba(6,24,14,.97),rgba(4,16,10,.97));border:1px solid rgba(220,184,111,.65);text-align:center;direction:rtl}
@@ -2978,20 +3004,21 @@ function todaySlot(x, now){
    : st==='next' ? (left>86400000 ? daysLeft(Math.ceil(left/86400000)) : cdn(x.t,'بدأت المباراة')) : '<i>×</i>';
  const [hs,as]=sides(ev,st,scored);
  const nm=(n,id,c)=>`<b class="${c.trim()}">${esc(shortTeam(teamAr(n,id)))}</b>`;
- return `<div class="mb4 ${st}"><div class="mb-cr"><span class="${hs.trim()}">${teamCrest(ev.strHomeTeamBadge)}</span><span class="${as.trim()}">${teamCrest(ev.strAwayTeamBadge)}</span></div>`
+ // the competition at the top between the two crests (the household's drawing), the state and the time at the foot
+ return `<div class="mb4 ${st}"><div class="mb-cr"><span class="${hs.trim()}">${teamCrest(ev.strHomeTeamBadge)}</span><span class="mb-lg">${leagueTag(x,ev)}</span><span class="${as.trim()}">${teamCrest(ev.strAwayTeamBadge)}</span></div>`
   + `<div class="mb-nm">${nm(ev.strHomeTeam,ev.idHomeTeam,hs)}${nm(ev.strAwayTeam,ev.idAwayTeam,as)}</div>`
-  + `<div class="mb-sc">${mid}</div><div class="mb-ft"><span class="mb-lg">${leagueTag(x,ev)}</span><span class="mb-st">${gameWhen(x,now,false)}</span></div></div>`;
+  + `<div class="mb-sc">${mid}</div><div class="mb-ft"><span class="mb-st">${gameWhen(x,now,false)}</span></div></div>`;
 }
 // one of the followed teams' games on the card: the competition; the day, the date and the time; then
 // crest | name (goals) × (goals) name | crest
 function fixtureRow(x, now){
  const ev=x.ev, st=gameState(x,now), scored=ev.intHomeScore!=null && ev.intAwayScore!=null && (st==='live' || st==='done');
  const [hs,as]=sides(ev,st,scored);
- const g=(v,c)=>`<span class="fx-g${c}">(${scored ? ar(+v) : '–'})</span>`;
+ const g=(v,c)=>`<span class="fx-g${c}${scored ? '' : ' pre'}">${scored ? ar(+v) : ar(0)}</span>`;
  const mine=id=>CONFIG.teamIds.includes(String(id)) ? ' mine' : '';
- return `<li class="fx ${st}"><div class="fx-lg">${leagueTag(x,ev)}</div><div class="fx-dt">${gameWhen(x,now,true)}</div>`
-  + `<div class="fx-tm"><span class="fx-c${hs}">${teamCrest(ev.strHomeTeamBadge)}</span><b class="fx-n h${mine(ev.idHomeTeam)}${hs}">${esc(shortTeam(teamAr(ev.strHomeTeam,ev.idHomeTeam)))}</b>${g(ev.intHomeScore,hs)}`
-  + `<i class="fx-x">×</i>${g(ev.intAwayScore,as)}<b class="fx-n a${mine(ev.idAwayTeam)}${as}">${esc(shortTeam(teamAr(ev.strAwayTeam,ev.idAwayTeam)))}</b><span class="fx-c${as}">${teamCrest(ev.strAwayTeamBadge)}</span></div></li>`;
+ return `<li class="fx ${st}"><span class="fx-c h${hs}">${teamCrest(ev.strHomeTeamBadge)}</span><div class="fx-mid"><div class="fx-lg">${leagueTag(x,ev)}</div><div class="fx-dt">${gameWhen(x,now,true)}</div>`
+  + `<div class="fx-tm"><b class="fx-n h${mine(ev.idHomeTeam)}${hs}">${esc(shortTeam(teamAr(ev.strHomeTeam,ev.idHomeTeam)))}</b>${g(ev.intHomeScore,hs)}`
+  + `<i class="fx-x">×</i>${g(ev.intAwayScore,as)}<b class="fx-n a${mine(ev.idAwayTeam)}${as}">${esc(shortTeam(teamAr(ev.strAwayTeam,ev.idAwayTeam)))}</b></div></div><span class="fx-c a${as}">${teamCrest(ev.strAwayTeamBadge)}</span></li>`;
 }
 let MATCH_PAGE = 0;
 function matchMinute(ev){
@@ -3434,7 +3461,7 @@ const CARD_ICONS = [
   [/^أذكار الصباح/, `<path d="M3 17h18 M7 17a5 5 0 0 1 10 0 M12 6v3 M5.6 10.6l2 1.6 M18.4 10.6l-2 1.6" fill="none" stroke="${G}" stroke-width="1.6" stroke-linecap="round"/>`],
   [/^أذكار المساء/, `<path d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z" fill="none" stroke="${G}" stroke-width="1.6" stroke-linejoin="round"/>`],
   [/^الطقس/, null],   // the weather's own icon
-  [/^مباريات/, `<circle cx="12" cy="12" r="8.5" fill="none" stroke="${G}" stroke-width="1.6"/><path d="M12 8l3.3 2.4-1.3 3.9h-4l-1.3-3.9z" fill="${G}"/><path d="M12 8V3.6 M15.3 10.4l4-1.3 M14 14.3l2.4 3.4 M10 14.3l-2.4 3.4 M8.7 10.4l-4-1.3" stroke="${G}" stroke-width="1.2"/>`],
+  [/^مباريات/, `<rect x="2.5" y="5" width="19" height="14" rx="1.5" fill="none" stroke="${G}" stroke-width="1.6"/><path d="M12 5v14 M2.5 9h3v6h-3 M21.5 9h-3v6h3" fill="none" stroke="${G}" stroke-width="1.4"/><circle cx="12" cy="12" r="2.6" fill="none" stroke="${G}" stroke-width="1.4"/>`],
   [/^الصلاة/, `<path d="M4 20h16 M6 20v-7a6 6 0 0 1 12 0v7 M12 4v3 M10 20v-4a2 2 0 0 1 4 0v4" fill="none" stroke="${G}" stroke-width="1.6" stroke-linejoin="round"/>`],
   [/^مواقيت/, `<circle cx="12" cy="12" r="8.5" fill="none" stroke="${G}" stroke-width="1.6"/><path d="M12 7v5l3.5 2" stroke="${G}" stroke-width="1.6" stroke-linecap="round" fill="none"/>`],
   [/^(مهامي|تذكيراتي)/, `<rect x="4" y="4" width="16" height="16" rx="3" fill="none" stroke="${G}" stroke-width="1.6"/><path d="M8 12l3 3 5-6" fill="none" stroke="${G}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>`],

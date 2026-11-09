@@ -264,7 +264,7 @@ for (const [width, height] of [[1920, 1080], [1280, 720], [960, 540]]) {
   await p.goto(page('tv.html') + '#teams=136013&panel=verse');
   await p.waitForTimeout(800);
   // the fixture row: home name (goals) × (goals) away name
-  const score = t => /الهلال\D*\(2\)\D*\(1\)\D*النصر/.test(t);
+  const score = t => /الهلال\D*\b2\b\D*\b1\b\D*النصر/.test(t);   // no brackets (the household's note)
   const slot = () => p.evaluate(() => matchCard().join(' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
   const game = (id, hoursAgo, score, status) => `({idEvent:'${id}', strHomeTeam:'Al-Hilal', strAwayTeam:'Al-Nassr',
     strTimestamp:new Date(Date.now() - ${hoursAgo} * 36e5).toISOString(), intHomeScore:${score ? score[0] : null},
@@ -290,7 +290,7 @@ for (const [width, height] of [[1920, 1080], [1280, 720], [960, 540]]) {
 
   await p.evaluate(`KEPT['136013'] = [${game('g1', 27, [2, 1], 'FT')}]; renderMatches();`);
   t = await slot();
-  check('a day later: score gone, next fixture shown', !score(t) && /الهلال \(–\) × \(–\) النصر/.test(t), t);
+  check('a day later: score gone, next fixture shown', !score(t) && /الهلال 0 × 0 النصر/.test(t), t);
   await ctx.close();
 }
 
