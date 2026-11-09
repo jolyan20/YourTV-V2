@@ -291,7 +291,7 @@
       </div>
       <label>مستوى صوت الأذان (من ١٠٠)، ويرجع صوت التلفزيون كما كان بعده</label><input id="adhan-volume" type="number" min="0" max="100" step="1" inputmode="numeric">
       <p class="muted">رفع الفيديو والملف الصوتي متاح في تبويب «فيديو الأذان».</p>
-      <div class="switch"><span>بث الحرم المكي تلقائياً وقت صلاة الجمعة والتراويح</span><input id="auto-quran" type="checkbox"></div>
+      <div class="switch"><span>بث الحرم المكي تلقائياً وقت صلاة الجمعة والتراويح (متوقف إلا إذا شغّلته)</span><input id="auto-quran" type="checkbox"></div>
       <div class="switch"><span>تفتح الشاشة أول ما يشتغل التلفزيون</span><input id="start-power" type="checkbox"></div>
       <div class="switch"><span>صوت تنبيه مباريات فريقك (قبلها بساعة، وصافرة البداية)</span><input id="match-sound" type="checkbox"></div>
       <label>صوت الصافرة</label><select id="whistle"><option value="2">صافرة حقيقية</option><option value="1">صافرة ناعمة</option></select>
@@ -387,8 +387,8 @@
       </div>
       <label>أو لين الساعة</label>
       <div class="row"><input id="g-until" type="time"><button class="ghost" style="flex:0 0 auto" onclick="gameUntil()">ابدأ</button></div>
-      <div class="switch" style="margin-top:10px"><span>لما ينتهي الوقت يرجع التلفزيون للشاشة الرئيسية</span><input id="g-home" type="checkbox" checked></div>
-      <p class="muted">يظهر عد تنازلي صغير في زاوية الشاشة فوق البلايستيشن، ويصير برتقالي آخر ٥ دقائق، وبالنهاية تظهر «انتهى وقت اللعب».</p>
+      <div class="switch" style="margin-top:10px"><span>لما ينتهي الوقت وهو على البلايستيشن يرجع التلفزيون للشاشة الرئيسية</span><input id="g-home" type="checkbox" checked></div>
+      <p class="muted">يظهر عد تنازلي صغير في زاوية الشاشة فوق البلايستيشن، ويصير برتقالي آخر ٥ دقائق. لما ينتهي الوقت ما يغطي شي الشاشة إذا كنتم على قناة أو تطبيق ثاني؛ «انتهى وقت اللعب» تظهر بس على البلايستيشن، ولو أحد اختاره بعدها نفس اليوم، لين تعطونه وقت جديد. التعرف على البلايستيشن يكون أدق إذا «الريموت من الجوال» شغّال على التلفزيون.</p>
       <div id="g-perm" class="muted" style="display:none;border:1px solid #f06a5a;border-radius:10px;padding:10px;margin-top:8px">
         ⚠️ هذا التلفزيون ما عنده إذن «العرض فوق التطبيقات»، فالعد ما يظهر فوق البلايستيشن (تظهر تنبيهات قصيرة بداله).
         <button class="ghost" style="width:100%;margin-top:8px" onclick="api('/api/openoverlay', {}).then(() => toast('افتح الإذن على التلفزيون وفعّله')).catch(() => {})">افتح الإذن على التلفزيون</button></div>
@@ -686,7 +686,7 @@ function render(){
   $('adhan-mode').value = d.adhanSound === false ? 'off' : am(d.adhanMode) || 'full';
   $('adhan-volume').value = d.adhanVolume == null ? 20 : d.adhanVolume;
   $('adhan-fajr-mode').value = d.adhanSound === false ? 'off' : am(d.adhanFajrMode) || (d.adhanFajr === false ? 'off' : am(d.adhanMode) || 'full');
-  $('auto-quran').checked = d.autoQuran !== false; $('match-sound').checked = d.matchSound !== false;
+  $('auto-quran').checked = d.autoQuran === true; $('match-sound').checked = d.matchSound !== false;
   $('whistle').value = d.whistle === '1' ? '1' : '2'; $('task-sound').checked = d.taskSound !== false;
   renderScreens(); renderReport(); renderAlarm(); renderRules();
   $('start-power').checked = d.startOnPower !== false;

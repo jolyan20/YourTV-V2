@@ -43,6 +43,18 @@ public class RemoteService extends AccessibilityService {
 
     static boolean on() { return running != null; }
 
+    /** the app in front (game time tells the PlayStation from an app); null when the service is off or cannot say */
+    static String foreground() {
+        RemoteService s = running;
+        if (s == null) return null;
+        try {
+            AccessibilityNodeInfo r = s.getRootInActiveWindow();
+            return r == null || r.getPackageName() == null ? null : r.getPackageName().toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     /** a key from the phone: "" when done, else why not (in Arabic, for the page) */
     static String key(Context c, String k) {
         AudioManager am = (AudioManager) c.getSystemService(Context.AUDIO_SERVICE);

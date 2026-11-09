@@ -20,8 +20,9 @@ import org.json.JSONObject;
 
 /**
  * Game time (the PlayStation, or anything on the TV), started from the phone page: a small countdown in the
- * corner over whatever is on screen, HDMI included; amber for the last 5 minutes; at the end a full-screen
- * «انتهى وقت اللعب» and, if chosen on the phone, the TV goes back to its home screen.
+ * corner over whatever is on screen, HDMI included; amber for the last 5 minutes. At the end nothing covers the
+ * screen unless the PlayStation is on it: then a full-screen «انتهى وقت اللعب» and, if chosen on the phone, the TV
+ * goes back to its home screen; and so again whenever the PlayStation is chosen later that day, until a new game time.
  * Drawing over other apps needs the "display over other apps" permission; without it only the screensaver
  * page shows the countdown.
  * The lock: with it on, the PlayStation's input (the TV says which input is on screen) is closed outside game
@@ -80,7 +81,10 @@ final class GameOverlay {
             // the TV names the input by its port while the console is off ("HDMI 4") and by the console once it is
             // on ("PlayStation 5"): either one is the PlayStation
             boolean onPort = src != null && (src.trim().equalsIgnoreCase(port.trim()) || src.toLowerCase(java.util.Locale.US).contains("playstation"));
+            if (onPort && inApp()) onPort = false;   // the TV still names the console's input while an app is in front
             boolean rules = lock || dailyMax > 0 || (schedule != null && schedule.optBoolean("on"));
+            // a game time that ended today keeps the PlayStation closed until the next one (only the PlayStation)
+            boolean endedToday = until > 0 && !active && today().equals(day(until));
             long win = windowEnd(now);
             int used = usedToday();
             boolean overLimit = dailyMax > 0 && used >= dailyMax * 60;
@@ -96,22 +100,24 @@ final class GameOverlay {
             if ((active || win > 0) && !draw && (onPort || src == null) && left > 0 && left != Long.MAX_VALUE) toastAt(left);
             if (!active && until > 0 && now <= until + END_SHOW_MS
                     && ControlStore.prefs(c).getLong("gameDone", 0) != until) {   // once per game time, even after a restart
+                // the end of the game time: nothing covers the screen unless the PlayStation is on it (the household
+                // found «انتهى وقت اللعب» over YouTube and the channels); on the PlayStation the closing below shows it
                 ControlStore.prefs(c).edit().putLong("gameDone", until).apply();
-                if (draw) showFull("🎮 انتهى وقت اللعب", "حان وقت الراحة", now);
-                if (home || rules) goHome();
             } else if (lastWin > 0 && win == 0 && onPort && !active) {   // the allowed hours just ended
                 if (draw) showFull("🎮 انتهى وقت اللعب", "انتهت ساعات اللعب المسموحة اليوم", now);
-                goHome();
-            } else if (rules && !allowed && onPort && !blocking) {
+                handler.postDelayed(GameOverlay.this::goHome, 3500);   // the message read first
+            } else if ((rules || endedToday) && !allowed && onPort && !blocking) {   // the PlayStation chosen while closed
                 blocking = true;
-                ControlStore.prefs(c).edit().putLong("gameAsk", now).apply();
-                if (draw) showFull(overLimit ? "🎮 انتهى حد اللعب اليوم" : "🎮 البلايستيشن يحتاج موافقة",
-                    "اطلب وقت لعب من لوحة التحكم في الجوال", now);
-                handler.postDelayed(() -> { goHome(); blocking = false; }, 3500);
+                if (now > until + 60_000) ControlStore.prefs(c).edit().putLong("gameAsk", now).apply();   // a request, not the end itself
+                if (draw) showFull(overLimit ? "🎮 انتهى حد اللعب اليوم" : endedToday && !rules ? "🎮 انتهى وقت اللعب" : "🎮 البلايستيشن يحتاج موافقة",
+                    endedToday && !rules && now <= until + END_SHOW_MS ? "حان وقت الراحة" : "اطلب وقت لعب من لوحة التحكم في الجوال", now);
+                final boolean kick = rules || home;   // «back to the home screen» chosen on the phone (or a rule): out of it
+                handler.postDelayed(() -> { if (kick) goHome(); blocking = false; }, kick ? 3500 : 60_000);
             }
             lastWin = win;
-            if (full != null && now > fullUntil) hideFull();
-            if (rules || active || full != null || now <= until + END_SHOW_MS) handler.postDelayed(this, 1000 - now % 1000);
+            // the closing covers the PlayStation only: gone as soon as the TV is on anything else
+            if (full != null && (now > fullUntil || (src != null && !onPort))) hideFull();
+            if (rules || active || endedToday || full != null || now <= until + END_SHOW_MS) handler.postDelayed(this, 1000 - now % 1000);
         }
     };
 
@@ -151,7 +157,25 @@ final class GameOverlay {
     }
 
     private static String today() {
-        return new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(new java.util.Date());
+        return day(System.currentTimeMillis());
+    }
+
+    private static String day(long ms) {
+        return new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(new java.util.Date(ms));
+    }
+
+    // apps that are never the PlayStation, whatever input the TV still names (with «التحكم من الجوال» on, Android
+    // says which app is in front)
+    private static final String[] APPS = {"com.google.android.youtube", "com.google.android.apps.youtube", "com.liskovsoft.",
+        "com.netflix.", "net.mbc.", "com.mbc.", "com.amazon.", "com.disney.", "com.spotify.", "com.anghami", "tv.anghami",
+        "com.osn", "com.starzplay", "org.chromium.", "com.android.chrome", "com.google.android.tvlauncher",
+        "com.google.android.apps.tv.launcherx", "com.android.tv.settings", "sa.yourtv.", "sa.urtv."};
+
+    private boolean inApp() {
+        String fg = RemoteService.foreground();
+        if (fg == null) return false;
+        for (String a : APPS) if (fg.startsWith(a)) return true;
+        return false;
     }
 
     /** the input on screen, as the TV names it ("HDMI 4"), or null where the TV does not say */

@@ -34,14 +34,20 @@ public class ConfigProvider extends ContentProvider {
         return android.os.ParcelFileDescriptor.open(f, android.os.ParcelFileDescriptor.MODE_READ_ONLY);
     }
 
-    /** the home screen's «القرآن»: the Makkah stream on or off on every TV, as OK does on the screensaver */
+    /** the home screen's «القرآن»: the Makkah stream on or off on this TV, as OK does on the screensaver */
     @Override
     public android.os.Bundle call(String method, String arg, android.os.Bundle extras) {
         if (getContext().checkCallingOrSelfPermission("sa.yourtv.v2.screensaver.READ_CONFIG")
                 != android.content.pm.PackageManager.PERMISSION_GRANTED) return null;
         android.os.Bundle out = new android.os.Bundle();
-        if ("quran".equals(method) && "toggle".equals(arg)) QuranWindow.everywhere(getContext(), !ControlStore.quran(getContext()));
-        out.putBoolean("on", "toggle".equals(arg) ? !ControlStore.quran(getContext()) : ControlStore.quran(getContext()));
+        if ("quran".equals(method) && "toggle".equals(arg)) {
+            boolean on = !ControlStore.quran(getContext());
+            QuranWindow.here(getContext(), on);   // this TV only
+            if (on && !MainActivity.up) try {   // its window lives in the screen: open it to play there
+                getContext().startActivity(new android.content.Intent(getContext(), MainActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
+            } catch (Exception ignored) { }
+        }
+        out.putBoolean("on", ControlStore.quran(getContext()));
         return out;
     }
 

@@ -1782,9 +1782,10 @@ function whistle1(){
   });
 }
 // the live Makkah stream by itself for the Friday prayer and for Taraweeh in Ramadan (Makkah's own times),
-// switched off again at the end unless it was already on; off from the phone page
+// switched off again at the end unless it was already on; only when turned on from the phone page (it was on by
+// default, and the household found the stream playing «without being asked»)
 function autoQuran(){
-  if(CONFIG.widget || DISP().autoQuran === false) return;
+  if(CONFIG.widget || DISP().autoQuran !== true) return;
   let w = null;
   try{
     const mk = computePrayers(21.4225, 39.8262), m = s => hm2m(s, null), p = riyadhParts(), now = p.h*60 + p.mi;

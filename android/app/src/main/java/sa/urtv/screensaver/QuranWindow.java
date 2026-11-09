@@ -51,7 +51,27 @@ final class QuranWindow {
         root.postDelayed(pending, Math.max(0, Math.min(10_000, at - ClockSync.now())));
     }
 
-    /** the remote's OK: the stream on or off on this TV and the others, 1.5 s from now on all of them */
+    /** the remote's OK and the home screen's «القرآن»: on or off on this TV only (another TV is never started from
+     *  here: it played «by itself» in the other room); with the household's clock, so it plays in step if both do */
+    static void here(Context c, boolean on) {
+        ControlStore.setQuran(c, on, ClockSync.now() + 300);
+    }
+
+    /** a stream turned on a moment ago (from the phone while the TV was elsewhere) opens with the screen; one left on
+     *  from before (the screen closed under it, hours ago) does not come back by itself: it is marked off on this TV */
+    static boolean resume(Context c) {
+        if (!ControlStore.quran(c)) return false;
+        if (Math.abs(ClockSync.now() - ControlStore.prefs(c).getLong("quranAt", 0)) < 3 * 60_000) return true;
+        ControlStore.setQuran(c, false, ClockSync.now());
+        return false;
+    }
+
+    /** the screen showing the stream is closing: the stream is over on this TV, and the phone page says so */
+    static void closing(Context c, QuranWindow q) {
+        if (q != null && q.isOn() && ControlStore.quran(c)) ControlStore.setQuran(c, false, ClockSync.now());
+    }
+
+    /** the phone page and the settings' row: the stream on or off on this TV and the others, 1.5 s from now on all of them */
     static void everywhere(Context c, boolean on) {
         long at = ClockSync.now() + 1500;
         ControlStore.setQuran(c, on, at);

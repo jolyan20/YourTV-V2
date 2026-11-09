@@ -38,7 +38,7 @@ public class MainActivity extends Activity {
         web.setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
             | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
         ControlStore.prefs(this).registerOnSharedPreferenceChangeListener(follow);
-        if (ControlStore.quran(this)) root.postDelayed(() -> { if (quran != null && !quran.isOn()) quran.toggle(); }, 2500);
+        if (QuranWindow.resume(this)) root.postDelayed(() -> { if (quran != null && !quran.isOn()) quran.toggle(); }, 2500);
         morning(getIntent());
     }
 
@@ -69,6 +69,19 @@ public class MainActivity extends Activity {
         root.postDelayed(() -> { if (quran != null) quran.playVideo(video, 0, 1800, null); }, 3000);
     }
 
+    // OK starts the Quran stream only when pressed twice (one press, to wake the screen or by mistake, played it on
+    // every TV); one press stops it. This TV only.
+    private long okAt;
+    private void okQuran() {
+        if (quran == null) return;
+        if (quran.isOn()) { QuranWindow.here(this, false); return; }
+        long now = android.os.SystemClock.uptimeMillis();
+        if (now - okAt < 4000) { okAt = 0; QuranWindow.here(this, true); return; }
+        okAt = now;
+        try { android.widget.Toast.makeText(getApplicationContext(), "اضغط «موافق» مرة ثانية لتشغيل قناة القرآن", android.widget.Toast.LENGTH_SHORT).show(); }
+        catch (Exception ignored) { }
+    }
+
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
         switch (e.getKeyCode()) {
@@ -78,9 +91,9 @@ public class MainActivity extends Activity {
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
                 if (e.getAction() == KeyEvent.ACTION_UP) {
                     if (web != null) web.evaluateJavascript("window.cardAction ? cardAction() : false", v -> {
-                        if (!"true".equals(v)) QuranWindow.everywhere(this, !quran.isOn());   // no card action: the stream
+                        if (!"true".equals(v)) okQuran();   // no card action: the stream
                     });
-                    else QuranWindow.everywhere(this, !quran.isOn());   // on every TV at the same moment
+                    else okQuran();
                 }
                 return true;
             case KeyEvent.KEYCODE_DPAD_LEFT:     // the screens (family, each person): next and back
@@ -106,6 +119,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         ControlStore.prefs(this).unregisterOnSharedPreferenceChangeListener(follow);
+        QuranWindow.closing(this, quran);
         if (quran != null) { quran.hide(); quran = null; }
         if (web != null) web.destroy();
         super.onDestroy();
