@@ -187,7 +187,7 @@ def search_club(name, league):
     """TheSportsDB's id of an ESPN club name, or "" when none fits (None when TheSportsDB did not answer). In a
     country's league only a club that plays in it counts (a search for «Al Hilal» also finds Sudan's and Libya's);
     in a continental cup, one club of that name that plays in one of the screen's leagues or in the cup itself."""
-    answered, found = False, {}
+    answered, found, exact_name = False, {}, {}
     for q in dict.fromkeys([name, re.sub(r"^Al ", "Al-", name)]):
         j = get(SDB + "searchteams.php?t=" + urllib.parse.quote(q), pace=2.5)
         if j is None:
@@ -199,6 +199,7 @@ def search_club(name, league):
             names = [t.get("strTeam") or ""] + (t.get("strTeamAlternate") or "").split(",")
             if any(n.strip() and key(n) == key(name) for n in names) or any(
                     n.strip() and words(n) and words(name) and (set(words(n)) <= set(words(name)) or set(words(name)) <= set(words(n))) for n in names):
+                exact_name[str(t["idTeam"])] = any(n.strip() and key(n) == key(name) for n in names)
                 found[str(t["idTeam"])] = {str(t.get(k)) for k in ("idLeague", "idLeague2", "idLeague3", "idLeague4",
                                                                    "idLeague5", "idLeague6", "idLeague7") if t.get(k)}
     if not answered:
@@ -206,12 +207,17 @@ def search_club(name, league):
     here = [i for i, ls in found.items() if league in ls]
     if league not in DOMESTIC and not here:
         here = [i for i, ls in found.items() if ls & DOMESTIC]
-    return here[0] if len(here) == 1 else ""
+    if len(here) > 1:
+        print("club", league, name, "several:", {i: sorted(found[i]) for i in here}, flush=True)
+        # the same club listed more than once (a reserve or an old entry): the oldest id is the club itself
+        exact = [i for i in here if exact_name.get(i)]
+        here = [min(exact or here, key=lambda i: int(i) if i.isdigit() else 10**12)]
+    return here[0] if here else ""
 
 
 class Clubs:
     """{scope|name: [id or "", day searched]}, kept between runs in fixtures/clubs.json"""
-    VERSION = 2   # 1 took a club of the same name from another country
+    VERSION = 3   # 1 took a club of the same name from another country; 2 none when one was listed twice
 
     def __init__(self, prev):
         try:
