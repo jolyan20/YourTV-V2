@@ -217,15 +217,20 @@ def search_club(name, league):
 
 class Clubs:
     """{scope|name: [id or "", day searched]}, kept between runs in fixtures/clubs.json"""
-    VERSION = 3   # 1 took a club of the same name from another country; 2 none when one was listed twice
+    VERSION = 4   # 1 took a club of the same name from another country; 2 none when one was listed twice;
+    # 3 saved «none» for a search the rate limit cut short
 
     def __init__(self, prev):
         try:
             self.map = json.loads(prev.read_text(encoding="utf-8"))
         except Exception:
             self.map = {}
-        if self.map.get("_version") != [self.VERSION, ""]:
-            self.map = {"_version": [self.VERSION, ""]}
+        v = (self.map.get("_version") or [0])[0]
+        if v < 3:
+            self.map = {}
+        elif v < self.VERSION:   # the blanks of a run cut short by the rate limit: asked again
+            self.map = {k: x for k, x in self.map.items() if x and x[0]}
+        self.map["_version"] = [self.VERSION, ""]
         self.budget, self.searched = SEARCH_BUDGET, 0
 
     def id(self, league, name):
