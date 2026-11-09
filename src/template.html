@@ -2783,7 +2783,8 @@ async function fixtureFile(league){
 // ESPN's public scoreboard first (a whole day's games in one answer, live minute and score, no key, no limit);
 // TheSportsDB when ESPN does not answer or does not carry the competition. ESPN's games are given TheSportsDB's
 // shape here, so everything after reads one kind of game.
-const ESPN_SLUG = {'4668': 'ksa.1', '5649': 'ksa.kings_cup', '5650': 'ksa.super_cup', '4719': 'afc.champions',
+// (the names the match files' run found answering, fixtures/report.json; ESPN has no Saudi Super Cup)
+const ESPN_SLUG = {'4668': 'ksa.1', '5649': 'ksa.kings.cup', '4719': 'afc.champions',
   '4480': 'uefa.champions', '4328': 'eng.1', '4335': 'esp.1', '4332': 'ita.1'};
 function espnEvent(e, league, lgLogo){
   const c = (e.competitions || [])[0] || {}, st = (e.status || c.status || {}), ty = st.type || {};

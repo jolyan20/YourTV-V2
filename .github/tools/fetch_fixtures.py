@@ -27,7 +27,7 @@ ESPN = "https://site.api.espn.com/apis/site/v2/sports/soccer/{}/scoreboard"
 # the screen's TOP_LEAGUES, with ESPN's names for each (the first that answers is kept and reported)
 LEAGUES = [
     ("4668", "دوري روشن", ["ksa.1"]),
-    ("5649", "كأس الملك", ["ksa.kings_cup", "ksa.kings.cup", "ksa.cup"]),
+    ("5649", "كأس الملك", ["ksa.kings.cup", "ksa.kings_cup"]),
     ("5650", "كأس السوبر السعودي", ["ksa.super_cup", "ksa.super.cup"]),
     ("4719", "أبطال آسيا للنخبة", ["afc.champions", "afc.cl", "afc.champions_elite"]),
     ("4480", "دوري أبطال أوروبا", ["uefa.champions"]),
@@ -167,12 +167,27 @@ def sdb_league(league, start):
     return list(got.values()) if ok else None
 
 
-def merge(sdb, espn):
+def league_teams(league):
+    """{name key: TheSportsDB id} of a league's clubs, their other names too ({} for a cup it does not list)"""
+    j = get(SDB + "lookup_all_teams.php?id=" + league, pace=2.5) or {}
+    out = {}
+    for t in j.get("teams") or []:
+        if not t or not t.get("idTeam"):
+            continue
+        for n in [t.get("strTeam") or ""] + (t.get("strTeamAlternate") or "").split(","):
+            if n.strip():
+                out.setdefault(key(n), str(t["idTeam"]))
+    return out
+
+
+def merge(sdb, espn, own=None, everyone=None):
+    """own: this league's clubs; everyone: all leagues' clubs, for a cup's teams (exact names only)"""
     out = list(sdb or [])
-    ids = {}   # ESPN's team name -> TheSportsDB's id, from the league's own games
+    ids = dict(own or {})   # ESPN's team name -> TheSportsDB's id
     for ev in out:
         for side in ("Home", "Away"):
-            ids[key(ev.get("str%sTeam" % side, ""))] = ev.get("id%sTeam" % side)
+            if ev.get("id%sTeam" % side):
+                ids[key(ev.get("str%sTeam" % side, ""))] = ev.get("id%sTeam" % side)
     for e in espn or []:
         te = when(e)
         twin = next((s for s in out if te and when(s) and abs((when(s) - te).total_seconds()) < 1200 and same_teams(s, e)), None)
@@ -187,7 +202,7 @@ def merge(sdb, espn):
             n = e["str%sTeam" % side]
             # the same name, or one name's words all in the other's, and only one such team in the league
             near = {v for k, v in ids.items() if v and words(k) and words(n) and (set(words(k)) <= set(words(n)) or set(words(n)) <= set(words(k)))}
-            sid = ids.get(key(n)) or (near.pop() if len(near) == 1 else None)
+            sid = ids.get(key(n)) or (near.pop() if len(near) == 1 else None) or (everyone or {}).get(key(n))
             if sid:
                 e["id%sTeam" % side] = sid
         out.append(e)
@@ -200,6 +215,13 @@ def main():
     today = datetime.datetime.now(datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     start, end = today - datetime.timedelta(days=BACK_DAYS), today + datetime.timedelta(days=AHEAD_DAYS)
     report = {"updated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "leagues": []}
+    # every league's clubs first (one call each): the ids the screen follows teams by, for ESPN's games
+    clubs, everyone = {}, {}
+    for lid, _, _ in LEAGUES:
+        clubs[lid] = league_teams(lid)
+        for k, v in clubs[lid].items():
+            everyone.setdefault(k, v)   # the first league wins a shared name (Roshn's clubs first)
+    report["clubs"] = {lid: len(c) for lid, c in clubs.items()}
     for lid, name, slugs in LEAGUES:
         if only and lid not in only:
             continue
@@ -216,7 +238,7 @@ def main():
                 path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
             row["kept"] = prev.exists()
         else:
-            events = [ev for ev in merge(sdb, espn) if (lambda t: t is None or start <= t <= end + datetime.timedelta(days=1))(when(ev))]
+            events = [ev for ev in merge(sdb, espn, clubs.get(lid), everyone) if (lambda t: t is None or start <= t <= end + datetime.timedelta(days=1))(when(ev))]
             for ev in events:
                 ev["idLeague"] = lid
             path.write_text(json.dumps({"id": lid, "league": name, "updated": report["updated"], "stale": False, "events": events},
