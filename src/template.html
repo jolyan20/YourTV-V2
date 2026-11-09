@@ -2170,7 +2170,13 @@ function sdbGet(path, low){
 async function sdbPump(){
   if(SDB_BUSY) return;
   SDB_BUSY = true;
-  for(let job; (job = SDB_Q[0].shift() || SDB_Q[1].shift()); ){
+  // today's games first, but the second line gets a turn after every three (it held the followed teams' lookups
+  // for minutes while today's calls kept failing)
+  for(let run = 0; ; ){
+    const low = run >= 3 && SDB_Q[1].length > 0;
+    const job = low ? SDB_Q[1].shift() : (SDB_Q[0].shift() || SDB_Q[1].shift());
+    if(!job) break;
+    run = low ? 0 : run + 1;
     const t0 = Date.now();
     job.res(await getJSON(`${SDB()}/${job.path}`, null));
     const wait = 4000 - (Date.now() - t0);
@@ -2229,11 +2235,14 @@ let TEAM_FIX = [];
 async function teamLeagues(){
   let cache = {};
   try{ cache = JSON.parse(localStorage.getItem('teamLeagues') || '{}'); }catch(e){}
+  const named = teamNamesSaved();
   for(const id of CONFIG.teamIds){
-    if(cache[id]) continue;
+    if(cache[id] && (named[id] || []).length) continue;
     const j = await sdbGet(`lookupteam.php?id=${id}`, true);
     const t = j && j.teams && j.teams[0];
     if(!t) continue;
+    // its names too, so a game from ESPN alone is known as this team's
+    saveTeamNames(id, [t.strTeam, t.strTeamShort, ...String(t.strTeamAlternate || '').split(',')]);
     cache[id] = ['idLeague','idLeague2','idLeague3','idLeague4','idLeague5','idLeague6','idLeague7']
       .map(k => t[k]).filter(x => x && /^\d+$/.test(x));
   }
@@ -2248,13 +2257,15 @@ async function teamFromFiles(){
     || names.has(teamKey(ev.strHomeTeam)) || names.has(teamKey(ev.strAwayTeam));
   const filed = (await Promise.all(TOP_LEAGUES.map(([id]) => fixtureFile(id)))).flat()
     .filter(ev => ev && ev.idEvent && ours(ev) && inWindow(ev));
-  if(filed.length && !TEAM_FIX.length){ TEAM_FIX = filed; buildToday(); if(CONFIG.panel === 'matches') renderPanel(false); }
+  const add = filed.filter(f => !TEAM_FIX.some(ev => ev.idEvent === f.idEvent || sameGame(ev, f)));
+  if(add.length){ TEAM_FIX = [...TEAM_FIX, ...add]; buildToday(); if(CONFIG.panel === 'matches') renderPanel(false); }
   return filed;
 }
 async function loadTeamFixtures(){
   const mine = new Set(CONFIG.teamIds), now = Date.now(), seen = new Set(), out = [];
+  const leagues = await teamLeagues();   // also learns the teams' names
   const filed = await teamFromFiles();
-  for(const league of await teamLeagues()){
+  for(const league of leagues){
     for(const ev of (await leagueGames(league, now - 86400000, now + 30*86400000, 6*3600000, true)) || []){
       if(!ev || seen.has(ev.idEvent) || !(mine.has(String(ev.idHomeTeam)) || mine.has(String(ev.idAwayTeam)))) continue;
       const t = toDate(ev).getTime();
@@ -2851,6 +2862,8 @@ async function loadToday(){
   }));
   buildToday();
   teamFromFiles();   // the followed teams' next games too, before the slow lookups
+  // the followed teams' month now, not after every league: its TheSportsDB calls wait behind today's in the queue
+  if(!loadToday.once){ loadToday.once = true; loadTeamFixtures(); }
   for(const [rank, [id, name]] of TOP_LEAGUES.entries()){
     const games = await dayGames(id, true);   // live scores: refreshLive
     if(games === null){ TODAY_FAILED.add(id); renderMatches(); continue; }
@@ -2860,21 +2873,29 @@ async function loadToday(){
     buildToday();   // each league as it arrives
   }
   try{ localStorage.setItem('todayGames', JSON.stringify({day, by: TODAY_BY})); }catch(e){}
-  if(!loadToday.once){ loadToday.once = true; loadTeamFixtures(); }   // the followed teams' month, after today's games
 }
 // the followed teams' names as the providers spell them, kept on the device: a game from ESPN alone (or a match file
 // made while TheSportsDB was down) carries ESPN's ids, so it is known as theirs by the name
-function followedKeys(){
+function teamNamesSaved(){
   let saved = {};
   try{ saved = JSON.parse(localStorage.getItem('teamNames') || '{}') || {}; }catch(e){}
-  const mine = new Set(CONFIG.teamIds), before = JSON.stringify(saved);
+  Object.keys(saved).forEach(id => { if(!Array.isArray(saved[id])) saved[id] = [saved[id]].filter(Boolean); });
+  return saved;
+}
+function saveTeamNames(id, names){
+  const saved = teamNamesSaved(), had = (saved[id] || []).join('|');
+  saved[id] = [...new Set([...(saved[id] || []), ...names.map(n => String(n || '').trim()).filter(Boolean)])].slice(0, 8);
+  if(saved[id].join('|') !== had) try{ localStorage.setItem('teamNames', JSON.stringify(saved)); }catch(e){}
+}
+function followedKeys(){
+  const mine = new Set(CONFIG.teamIds);
   [...Object.values(MATCHES), ...Object.values(NEXT_LIST).flat(), ...Object.values(RESULTS).flat(), ...TEAM_FIX].forEach(ev => {
     if(!ev) return;
-    if(mine.has(String(ev.idHomeTeam)) && ev.strHomeTeam) saved[ev.idHomeTeam] = ev.strHomeTeam;
-    if(mine.has(String(ev.idAwayTeam)) && ev.strAwayTeam) saved[ev.idAwayTeam] = ev.strAwayTeam;
+    if(mine.has(String(ev.idHomeTeam)) && ev.strHomeTeam) saveTeamNames(String(ev.idHomeTeam), [ev.strHomeTeam]);
+    if(mine.has(String(ev.idAwayTeam)) && ev.strAwayTeam) saveTeamNames(String(ev.idAwayTeam), [ev.strAwayTeam]);
   });
-  if(JSON.stringify(saved) !== before) try{ localStorage.setItem('teamNames', JSON.stringify(saved)); }catch(e){}
-  return new Set(CONFIG.teamIds.map(id => saved[id]).filter(Boolean).map(teamKey));
+  const saved = teamNamesSaved();
+  return new Set(CONFIG.teamIds.flatMap(id => saved[id] || []).map(teamKey));
 }
 function buildToday(){
   const got = TOP_LEAGUES.map(([id]) => TODAY_BY[id] || []);

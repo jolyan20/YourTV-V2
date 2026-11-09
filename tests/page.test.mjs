@@ -324,11 +324,15 @@ for (const [width, height] of [[1920, 1080], [1280, 720], [960, 540]]) {
   const files = [];
   await ctx.route(/^https?:/, r => {
     const u = r.request().url();
+    if(/thesportsdb\.com.*lookupteam\.php\?id=136013/.test(u))   // the team's own names, for a game with ESPN's ids
+      return r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+        body: JSON.stringify({ teams: [{ idTeam: '136013', strTeam: 'Al-Hilal', strTeamAlternate: 'Al Hilal SFC', idLeague: '4668' }] }) });
     if(!/raw\.githubusercontent\.com\/jolyan20\/YourTV-V2\/data-fixtures\/fixtures\//.test(u)) return r.abort();
     files.push(u);
     const events = /\/4668\.json$/.test(u) ? [
       { idEvent: 'f1', idLeague: '4668', strTimestamp: iso(now + 2 * 36e5), strHomeTeam: 'Al-Hilal', strAwayTeam: 'Al-Nassr', idHomeTeam: '136013', idAwayTeam: '136137', strStatus: 'NS' },
-      { idEvent: 'f2', idLeague: '4668', strTimestamp: iso(now + 5 * 864e5), strHomeTeam: 'Al-Ittihad', strAwayTeam: 'Al-Hilal', idHomeTeam: '136135', idAwayTeam: '136013', strStatus: 'NS' }] : [];
+      { idEvent: 'f2', idLeague: '4668', strTimestamp: iso(now + 5 * 864e5), strHomeTeam: 'Al-Ittihad', strAwayTeam: 'Al-Hilal', idHomeTeam: '136135', idAwayTeam: '136013', strStatus: 'NS' },
+      { idEvent: 'espn7', idLeague: '4668', strTimestamp: iso(now + 9 * 864e5), strHomeTeam: 'Al Hilal', strAwayTeam: 'Al Diriyah', idHomeTeam: 'espn929', idAwayTeam: 'espn131746', strStatus: 'NS' }] : [];
     r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ id: '4668', events }) });
   });
   const p = await ctx.newPage();
@@ -339,6 +343,8 @@ for (const [width, height] of [[1920, 1080], [1280, 720], [960, 540]]) {
   const card = await p.evaluate(() => matchCard().join(' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '));
   check("the followed team's next games from the match file", /الاتحاد/.test(card) && /النصر/.test(card), card.slice(0, 300));
   check('every league asked from the files', files.length >= 8, files.length);
+  await p.waitForFunction(() => TEAM_FIX.some(ev => ev.idEvent === 'espn7'), null, { timeout: 60000 }).catch(() => {});
+  check("a game with ESPN's ids known as the team's by its name", await p.evaluate(() => TEAM_FIX.some(ev => ev.idEvent === 'espn7')));
   await ctx.close();
 }
 

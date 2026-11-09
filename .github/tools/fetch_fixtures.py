@@ -19,6 +19,7 @@ import re
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -167,23 +168,60 @@ def sdb_league(league, start):
     return list(got.values()) if ok else None
 
 
-def league_teams(league):
-    """{name key: TheSportsDB id} of a league's clubs, their other names too ({} for a cup it does not list)"""
-    j = get(SDB + "lookup_all_teams.php?id=" + league, pace=2.5) or {}
-    out = {}
-    for t in j.get("teams") or []:
-        if not t or not t.get("idTeam"):
+# a cup's clubs are looked up as its country's league's (the same names)
+CLUB_SCOPE = {"5649": "4668", "5650": "4668"}
+SEARCH_BUDGET, RETRY_DAYS = 90, 7
+
+
+def search_club(name, league):
+    """TheSportsDB's id of an ESPN club name: one that plays in the league if the search finds several;
+    "" when none fits, None when TheSportsDB did not answer"""
+    answered = False
+    for q in dict.fromkeys([name, re.sub(r"^Al ", "Al-", name)]):
+        j = get(SDB + "searchteams.php?t=" + urllib.parse.quote(q), pace=2)
+        if j is None:
             continue
-        for n in [t.get("strTeam") or ""] + (t.get("strTeamAlternate") or "").split(","):
-            if n.strip():
-                out.setdefault(key(n), str(t["idTeam"]))
-    return out
+        answered = True
+        teams = [t for t in (j.get("teams") or []) if t and t.get("idTeam") and (t.get("strSport") or "Soccer") == "Soccer"]
+        named = [t for t in teams if any(name_like(n, name) and (set(words(n)) <= set(words(name)) or set(words(name)) <= set(words(n)))
+                                         for n in [t.get("strTeam") or ""] + (t.get("strTeamAlternate") or "").split(",") if n.strip())]
+        here = [t for t in named if league in {str(t.get(k)) for k in ("idLeague", "idLeague2", "idLeague3", "idLeague4",
+                                                                      "idLeague5", "idLeague6", "idLeague7") if t.get(k)}]
+        pick = here[0] if len(here) == 1 else named[0] if len(named) == 1 else None
+        if pick:
+            return str(pick["idTeam"])
+    return "" if answered else None
 
 
-def merge(sdb, espn, own=None, everyone=None):
-    """own: this league's clubs; everyone: all leagues' clubs, for a cup's teams (exact names only)"""
+class Clubs:
+    """{scope|name: [id or "", day searched]}, kept between runs in fixtures/clubs.json"""
+    def __init__(self, prev):
+        try:
+            self.map = json.loads(prev.read_text(encoding="utf-8"))
+        except Exception:
+            self.map = {}
+        self.budget, self.searched = SEARCH_BUDGET, 0
+
+    def id(self, league, name):
+        k = CLUB_SCOPE.get(league, league) + "|" + key(name)
+        v = self.map.get(k)
+        today = datetime.date.today()
+        if v and (v[0] or (today - datetime.date.fromisoformat(v[1])).days < RETRY_DAYS):
+            return v[0] or None
+        if self.budget <= 0:
+            return None
+        self.budget -= 1
+        found = search_club(name, CLUB_SCOPE.get(league, league))
+        self.searched += 1
+        if found is not None:
+            self.map[k] = [found, today.isoformat()]
+        return found or None
+
+
+def merge(sdb, espn, clubs=None, league=None):
+    """clubs: ESPN's club names looked up on TheSportsDB (Clubs), for the ESPN games TheSportsDB did not list"""
     out = list(sdb or [])
-    ids = dict(own or {})   # ESPN's team name -> TheSportsDB's id
+    ids = {}   # ESPN's team name -> TheSportsDB's id
     for ev in out:
         for side in ("Home", "Away"):
             if ev.get("id%sTeam" % side):
@@ -202,7 +240,7 @@ def merge(sdb, espn, own=None, everyone=None):
             n = e["str%sTeam" % side]
             # the same name, or one name's words all in the other's, and only one such team in the league
             near = {v for k, v in ids.items() if v and words(k) and words(n) and (set(words(k)) <= set(words(n)) or set(words(n)) <= set(words(k)))}
-            sid = ids.get(key(n)) or (near.pop() if len(near) == 1 else None) or (everyone or {}).get(key(n))
+            sid = ids.get(key(n)) or (near.pop() if len(near) == 1 else None) or (clubs.id(league, n) if clubs else None)
             if sid:
                 e["id%sTeam" % side] = sid
         out.append(e)
@@ -215,13 +253,7 @@ def main():
     today = datetime.datetime.now(datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     start, end = today - datetime.timedelta(days=BACK_DAYS), today + datetime.timedelta(days=AHEAD_DAYS)
     report = {"updated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "leagues": []}
-    # every league's clubs first (one call each): the ids the screen follows teams by, for ESPN's games
-    clubs, everyone = {}, {}
-    for lid, _, _ in LEAGUES:
-        clubs[lid] = league_teams(lid)
-        for k, v in clubs[lid].items():
-            everyone.setdefault(k, v)   # the first league wins a shared name (Roshn's clubs first)
-    report["clubs"] = {lid: len(c) for lid, c in clubs.items()}
+    clubs = Clubs(PREV / "clubs.json")
     for lid, name, slugs in LEAGUES:
         if only and lid not in only:
             continue
@@ -238,7 +270,7 @@ def main():
                 path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
             row["kept"] = prev.exists()
         else:
-            events = [ev for ev in merge(sdb, espn, clubs.get(lid), everyone) if (lambda t: t is None or start <= t <= end + datetime.timedelta(days=1))(when(ev))]
+            events = [ev for ev in merge(sdb, espn, clubs, lid) if (lambda t: t is None or start <= t <= end + datetime.timedelta(days=1))(when(ev))]
             for ev in events:
                 ev["idLeague"] = lid
             path.write_text(json.dumps({"id": lid, "league": name, "updated": report["updated"], "stale": False, "events": events},
@@ -246,6 +278,8 @@ def main():
             row["games"] = len(events)
         report["leagues"].append(row)
         print(json.dumps(row, ensure_ascii=False), flush=True)
+    (OUT / "clubs.json").write_text(json.dumps(clubs.map, ensure_ascii=False, indent=0, sort_keys=True), encoding="utf-8")
+    report["clubsSearched"], report["clubsKnown"] = clubs.searched, sum(1 for v in clubs.map.values() if v[0])
     (OUT / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
     if not any(r.get("games") for r in report["leagues"]):
         sys.exit("no league answered")
