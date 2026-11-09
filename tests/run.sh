@@ -9,3 +9,4 @@ python3 tests/find_tv_test.py
 node tests/salary.cjs
 node tests/revision6.cjs
 node tests/page.test.mjs
+node tests/remote.test.mjs

@@ -67,6 +67,13 @@ public class SettingsActivity extends Activity {
         render();
     }
 
+    // back from the TV's own settings (the remote turned on, the overlay allowed): the rows say so
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        render();
+    }
+
     private void render() {
         list.removeAllViews();
         TextView title = new TextView(this);
@@ -95,6 +102,10 @@ public class SettingsActivity extends Activity {
             R.drawable.ic_eye, new Runnable() { public void run() { } });
         row("تغيير الرمز السري", "يلغي دخول كل الجوالات، وتدخلون بالرمز الجديد", R.drawable.ic_sync, new Runnable() { public void run() {
             ControlStore.resetPin(SettingsActivity.this); render(); } });
+        // the phone page's remote in any app: Android asks for it once, in its accessibility settings
+        row("الريموت من الجوال", RemoteService.on() ? "يعمل · الأسهم والكتابة في أي تطبيق"
+                : "متوقف · اضغط وشغّل «تلفزيوني: التحكم من الجوال»", R.drawable.ic_sync,
+            new Runnable() { public void run() { RemoteService.openSettings(SettingsActivity.this); } });
 
         header("الموقع");
         row("المدينة", prefs.city()[0], R.drawable.ic_place, new Runnable() { public void run() { pickCity(); } });

@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">YourTV V2 · شاشة التوقف</string>
+    <string name="remote_service">تلفزيوني: التحكم من الجوال</string>
+    <string name="remote_service_about">يخلّي لوحة التحكم في جوالك تشتغل كريموت في أي تطبيق: الأسهم وموافق ورجوع والرئيسية والكتابة. ما يقرأ شي من الشاشة ولا يحفظ شي، ويشتغل بس لجوال داخل بالرمز السري.</string>
 </resources>

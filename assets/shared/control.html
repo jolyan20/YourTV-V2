@@ -80,6 +80,13 @@
   .sch{display:flex;align-items:center;gap:6px;padding:4px 0} .sch span{flex:0 0 62px;color:var(--dim);font-size:14px} .sch input{padding:7px}
   .tag2{font-size:12px;color:var(--gold);border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin-inline-start:4px}
   .order button{background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:8px;width:32px;height:32px}
+  /* the remote: arrows where they are on the TV's remote, whatever the page's direction */
+  .pad{direction:ltr;display:grid;grid-template-columns:repeat(3,1fr);grid-template-areas:". u ." "l o r" ". d .";gap:10px;max-width:320px;margin:4px auto 10px}
+  .pad button{aspect-ratio:1;border-radius:50%;border:1px solid var(--line);background:var(--card2);color:var(--txt);font-size:28px;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+  .pad button:active,.rkeys button:active{background:var(--gold);color:#1a1208}
+  .pad .ok{background:var(--gold);color:#1a1208;font-weight:700;font-size:20px;border:0}
+  .rkeys button{font-size:17px;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+  #rm-apps button{max-width:48%}
 </style>
 </head>
 <body>
@@ -117,6 +124,37 @@
     <div class="card"><h2>💊 تذكيرات اليوم</h2><ul id="home-rem"></ul></div>
     <div class="card"><h2>✅ مهامي</h2><ul id="home-tasks"></ul></div>
     <div class="card"><h2>🎂 أقرب مناسبة</h2><div id="home-fam" class="muted"></div></div>
+  </section>
+
+  <section id="s-remote">
+    <div class="card ask" id="rm-off" hidden>
+      <h2>شغّل الريموت مرة وحدة على التلفزيون</h2>
+      <p class="muted">إعدادات التلفزيون ← إمكانية الوصول (Accessibility) ← «تلفزيوني: التحكم من الجوال» ← تشغيل. بدونه يشتغل الصوت والتشغيل والإيقاف وفتح التطبيقات وبحث يوتيوب بس.</p>
+      <button class="main" onclick="remote({do: 'settings'})">افتح الإعدادات على التلفزيون</button>
+    </div>
+    <div class="card">
+      <div class="pad" id="rm-pad">
+        <button data-k="up" style="grid-area:u" aria-label="فوق">▲</button>
+        <button data-k="left" style="grid-area:l" aria-label="يسار">◀</button>
+        <button data-k="ok" class="ok" style="grid-area:o">موافق</button>
+        <button data-k="right" style="grid-area:r" aria-label="يمين">▶</button>
+        <button data-k="down" style="grid-area:d" aria-label="تحت">▼</button>
+      </div>
+      <div class="grid3 rkeys" id="rm-keys">
+        <button data-k="back">↩︎ رجوع</button><button data-k="home">⌂ الرئيسية</button><button data-k="play">⏯ تشغيل/إيقاف</button>
+        <button data-k="voldown">🔉 أخفض</button><button data-k="mute">🔇 كتم</button><button data-k="volup">🔊 أعلى</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>⌨️ اكتب في التلفزيون</h2>
+      <input id="rm-text" maxlength="300" enterkeyhint="send" placeholder="اكتب هنا…">
+      <div class="row">
+        <button class="main" onclick="remoteType('type')">اكتب في الخانة</button>
+        <button class="main" onclick="remoteType('youtube')">ابحث في يوتيوب</button>
+      </div>
+      <p class="muted">«اكتب في الخانة» يكتب في خانة البحث أو الكتابة المفتوحة على التلفزيون. «ابحث في يوتيوب» يفتح يوتيوب على البحث مباشرة.</p>
+    </div>
+    <div class="card"><h2>📺 التطبيقات</h2><div class="chips" id="rm-apps"><span class="muted">جارٍ التحميل…</span></div></div>
   </section>
 
   <section id="s-message">
@@ -455,7 +493,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const TABS = [['home','🏠 الرئيسية'],['video','🎞️ فيديو الأذان'],['screens','👥 الشاشات'],['message','💬 رسالة'],['tasks','✅ مهامي'],['reminders','💊 تذكيرات'],['family','🎂 مناسبات'],['wird','📖 الورد'],['game','🎮 اللعب'],['series','🎬 مسلسلاتي'],['alarm','⏰ المنبه'],['report','📊 التقرير'],['sleep','🌙 النوم'],['screen','🖥️ الشاشة']];
+const TABS = [['home','🏠 الرئيسية'],['remote','🕹️ الريموت'],['video','🎞️ فيديو الأذان'],['screens','👥 الشاشات'],['message','💬 رسالة'],['tasks','✅ مهامي'],['reminders','💊 تذكيرات'],['family','🎂 مناسبات'],['wird','📖 الورد'],['game','🎮 اللعب'],['series','🎬 مسلسلاتي'],['alarm','⏰ المنبه'],['report','📊 التقرير'],['sleep','🌙 النوم'],['screen','🖥️ الشاشة']];
 const DAYS = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 const PRESETS = ['العشاء جاهز 🍽️','الغداء جاهز','حياكم الله 🌹','وقت النوم 🌙','لا تنسون أغراضكم'];
 const CARDS = [['adhkar','أذكار الصباح والمساء'],['verse','آية اليوم'],['hadith','حديث اليوم'],['wisdom','مختارات'],['summary','ملخص اليوم (الصباح)'],['stars','النجوم (للأطفال)'],['family','مناسبة اليوم (مع الصورة)'],['wird','الورد اليومي'],['tasks','مهامي وتذكيراتي'],['bedtime','وقت النوم'],['series','مسلسلاتي'],['weather','الطقس'],['matches','مباريات فرقك']];
@@ -558,7 +596,56 @@ function openTab(k){
   localStorage.setItem('tvtab', k);
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.k === k));
   document.querySelectorAll('section').forEach(s => s.classList.toggle('on', s.id === 's-' + k));
+  if(k === 'remote') remoteStatus(true);
 }
+
+// ---------- the remote: each press is sent in order (a quick run of arrows lands as pressed) ----------
+let REMOTE_Q = Promise.resolve(), REMOTE_APPS = false;
+const REMOTE_WHY = {off: 'شغّل «تلفزيوني: التحكم من الجوال» في إعدادات التلفزيون أول', field: 'ما فيه خانة كتابة مفتوحة على التلفزيون، افتح البحث وجرّب',
+  youtube: 'يوتيوب ما هو موجود على هذا التلفزيون', app: 'تعذر فتح التطبيق', text: 'اكتب شي أول', fail: 'ما ضبط، جرّب مرة ثانية'};
+function remote(o){
+  REMOTE_Q = REMOTE_Q.then(async () => {
+    try{
+      const r = await api('/api/remote', o);
+      $('rm-off').hidden = r.on !== false;
+      if(!r.ok && REMOTE_WHY[r.why]) toast(REMOTE_WHY[r.why], true);
+      else if(r.ok && o.do !== 'key') toast(o.do === 'settings' ? 'انفتحت الإعدادات على التلفزيون' : 'تم');
+    }catch(e){ if(e.message !== 'pin') toast('تعذر الوصول للتلفزيون', true); }
+  });
+}
+function remoteKey(k){ if(navigator.vibrate) navigator.vibrate(12); remote({do: 'key', key: k}); }
+function remoteType(how){ const t = $('rm-text').value.trim(); if(!t) return toast(REMOTE_WHY.text, true); remote({do: how, text: t}); }
+async function remoteStatus(apps){
+  try{
+    const r = await api('/api/remote');
+    $('rm-off').hidden = !!r.on;
+    if(apps || !REMOTE_APPS){
+      REMOTE_APPS = true;
+      $('rm-apps').innerHTML = (r.apps || []).map(a => `<button type="button" data-pkg="${esc(a.pkg)}">${esc(a.name)}</button>`).join('') || '<span class="muted">ما لقيت تطبيقات</span>';
+    }
+  }catch(e){}
+}
+// a held arrow repeats, as on the remote
+(() => {
+  let hold = null;
+  const stop = () => { clearTimeout(hold); clearInterval(hold); hold = null; };
+  const press = e => {
+    const b = e.target.closest('button[data-k]'); if(!b) return;
+    e.preventDefault(); stop(); remoteKey(b.dataset.k);
+    if(['up', 'down', 'left', 'right', 'volup', 'voldown'].includes(b.dataset.k))
+      hold = setTimeout(() => { hold = setInterval(() => remoteKey(b.dataset.k), 180); }, 450);
+  };
+  ['rm-pad', 'rm-keys'].forEach(id => { const el = $(id); el.addEventListener('pointerdown', press); ['pointerup', 'pointerleave', 'pointercancel'].forEach(t => el.addEventListener(t, stop)); });
+  $('rm-apps').onclick = e => { const b = e.target.closest('button[data-pkg]'); if(b) remote({do: 'open', pkg: b.dataset.pkg}); };
+  $('rm-text').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); remoteType('type'); } });
+  // an iPad's keyboard: its arrows, Enter and Esc on the remote tab
+  document.addEventListener('keydown', e => {
+    if(!$('s-remote').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+    const k = {ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', Enter: 'ok', Escape: 'back'}[e.key];
+    if(k){ e.preventDefault(); remoteKey(k); }
+  });
+  setInterval(() => { if(!document.hidden && $('s-remote').classList.contains('on')) remoteStatus(false); }, 6000);
+})();
 
 function render(){
   { const gp = document.getElementById('g-perm'); if(gp) gp.style.display = STATE.overlay === false ? 'block' : 'none'; }

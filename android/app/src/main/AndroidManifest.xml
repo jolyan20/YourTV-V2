@@ -25,6 +25,12 @@
         <package android:name="sa.yourtv.v2.home" />
         <!-- turns Tailscale back on when Android stopped it, for the phone page from outside home -->
         <package android:name="com.tailscale.ipn" />
+        <!-- the phone remote's apps row and YouTube's search (RemoteService) -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+        </intent>
+        <package android:name="com.google.android.youtube.tv" />
     </queries>
 
     <uses-feature android:name="android.software.leanback" android:required="false" />
@@ -113,6 +119,18 @@
             android:authorities="sa.yourtv.v2.screensaver.config"
             android:exported="true"
             android:readPermission="sa.yourtv.v2.screensaver.READ_CONFIG" />
+        <!-- «تلفزيوني: التحكم من الجوال»: the phone page's arrows, OK, Back, Home and typing in any app, once
+             turned on in the TV's accessibility settings; it acts only on a signed-in phone's request -->
+        <service
+            android:name=".RemoteService"
+            android:exported="true"
+            android:label="@string/remote_service"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/remote_service" />
+        </service>
         <receiver android:name=".MorningAlarm" android:exported="false" />
         <receiver android:name=".AppUpdater$Done" android:exported="false" />
     </application>

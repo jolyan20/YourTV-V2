@@ -125,7 +125,7 @@ final class ControlServer implements Runnable {
             String device=get(h,"x-device","");
             if(!device.isEmpty() && !device.equals("local")) {
                 if(!ControlStore.sessionValid(app,get(h,"x-key",""))) {reply(s,401,"application/json","{}",false);return;}
-                if(!path.matches("/api/(state|prefs|teams|shows|save|upload|quran|appupdate|test|openoverlay|tvname)(\\?.*)?")) {reply(s,403,"application/json","{}",false);return;}
+                if(!path.matches("/api/(state|prefs|teams|shows|save|upload|quran|appupdate|test|openoverlay|tvname|remote)(\\?.*)?")) {reply(s,403,"application/json","{}",false);return;}
                 String peerHost = ControlStore.tvHost(app, device);
                 if (peerHost != null) { relayPeer(s, in, method, path, h, len, peerHost); return; }   // a TV of the household: its sync key
                 relayDevice(s,in,method,path,h,len,device); return;
@@ -311,6 +311,25 @@ final class ControlServer implements Runnable {
                 try { app.startActivity(i); }
                 catch (Exception e) { try { app.startActivity(new android.content.Intent(android.provider.Settings.ACTION_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception ignored) { } }
                 reply(s, 200, "application/json", "{\"ok\":true}", false); return;
+            }
+            if ("/api/remote".equals(path)) {   // the phone's remote: whether it can act in other apps, the apps; a key, words, an app
+                if ("GET".equals(method)) {
+                    reply(s, 200, "application/json; charset=utf-8", new JSONObject().put("on", RemoteService.on())
+                        .put("apps", RemoteService.apps(app)).toString(), false); return;
+                }
+                JSONObject o = new JSONObject(new String(body, StandardCharsets.UTF_8));
+                String text = o.optString("text"), why;
+                if (text.length() > 300) text = text.substring(0, 300);
+                android.content.Context c = RemoteService.running != null ? RemoteService.running : app;   // it may open apps from the background
+                switch (o.optString("do")) {
+                    case "key": why = RemoteService.key(app, o.optString("key")); break;
+                    case "type": why = text.isEmpty() ? "text" : RemoteService.type(c, text); break;
+                    case "youtube": why = text.isEmpty() ? "text" : RemoteService.youtube(c, text); break;
+                    case "open": why = o.optString("pkg").matches("[A-Za-z0-9_.]{3,120}") ? RemoteService.open(c, o.optString("pkg")) : "app"; break;
+                    case "settings": RemoteService.openSettings(c); why = ""; break;
+                    default: why = "do";
+                }
+                reply(s, 200, "application/json", new JSONObject().put("ok", why.isEmpty()).put("why", why).put("on", RemoteService.on()).toString(), false); return;
             }
             if ("/api/pair".equals(path) && "POST".equals(method)) {   // the importing TV hands this one the shared sync key
                 TvImport.pair(app, new JSONObject(new String(body, StandardCharsets.UTF_8)));
