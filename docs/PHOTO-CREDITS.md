@@ -234,3 +234,13 @@ From the [Saudi Photos Hub](https://cc.spa.gov.sa) of the Saudi Press Agency (و
 | `photos/spa-91534.jpg` | توربين لتوليد الطاقة في محافظة حريملاء شمال غربي العاصمة السعودية الرياض | [واس](https://cc.spa.gov.sa/ar/news/91529) |
 | `photos/spa-84320.jpg` | كائنات بحرية كبيرة في المياه الإقليمية للسعودية | [واس](https://cc.spa.gov.sa/ar/news/84318) |
 | `photos/spa-57191.jpg` | واجهة بحرية بمنطقة تبوك شمال غربي المملكة العربية السعودية | [واس](https://cc.spa.gov.sa/ar/news/57189) |
+| `photos/spa-101925.jpg` | غطاء نباتي وسحب منخفضة على مرتفعات جازان | [واس](https://cc.spa.gov.sa/ar/news/101923) |
+| `photos/spa-75596.jpg` | إحدى المزارع بمنطقة عسير | [واس](https://cc.spa.gov.sa/ar/news/75594) |
+| `photos/spa-50113.jpg` | نقوش بجبل الذرواء في منطقة نجران | [واس](https://cc.spa.gov.sa/ar/news/50111) |
+| `photos/spa-82604.jpg` | الضباب يحتوي جبال المندق | [واس](https://cc.spa.gov.sa/ar/news/82602) |
+| `photos/spa-58762.jpg` | منظومة (SHIMM) الفلكية المتطورة في موقع منارة العلا | [واس](https://cc.spa.gov.sa/ar/news/58760) |
+| `photos/spa-60617.jpg` | أشجار العرعر في بلّسمر بمنطقة عسير | [واس](https://cc.spa.gov.sa/ar/news/60615) |
+| `photos/spa-48685.jpg` | بيوت الطين في نجران جنوب غربي المملكة العربية السعودية | [واس](https://cc.spa.gov.sa/ar/news/48683) |
+| `photos/spa-84089.jpg` | الطبيعة الخلّابة بمحافظة فيفاء بمنطقة جازان | [واس](https://cc.spa.gov.sa/ar/news/84087) |
+| `photos/spa-82598.jpg` | جبال تنومة | [واس](https://cc.spa.gov.sa/ar/news/82595) |
+| `photos/spa-56971.jpg` | قصور وحصون في منطقة الباحة | [واس](https://cc.spa.gov.sa/ar/news/56967) |
