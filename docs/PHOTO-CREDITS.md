@@ -244,3 +244,13 @@ From the [Saudi Photos Hub](https://cc.spa.gov.sa) of the Saudi Press Agency (و
 | `photos/spa-84089.jpg` | الطبيعة الخلّابة بمحافظة فيفاء بمنطقة جازان | [واس](https://cc.spa.gov.sa/ar/news/84087) |
 | `photos/spa-82598.jpg` | جبال تنومة | [واس](https://cc.spa.gov.sa/ar/news/82595) |
 | `photos/spa-56971.jpg` | قصور وحصون في منطقة الباحة | [واس](https://cc.spa.gov.sa/ar/news/56967) |
+| `photos/spa-27438.jpg` | البيوت الطينية بقرى الصروف بمنطقة نجران | [واس](https://cc.spa.gov.sa/ar/news/27436) |
+| `photos/spa-81674.jpg` | سلة من الخوص مليئة بثمار البن وقت حصاده في جازان | [واس](https://cc.spa.gov.sa/ar/news/81672) |
+| `photos/spa-91002.jpg` | تشكيلات صخرية في جبل طويق غرب العاصمة السعودية الرياض | [واس](https://cc.spa.gov.sa/ar/news/91000) |
+| `photos/spa-82223.jpg` | جمال الطبيعة بمحافظة حقل | [واس](https://cc.spa.gov.sa/ar/news/82221) |
+| `photos/spa-50166.jpg` | السياحة الفلكية في العلا تجمع بين الطبيعة والسماء الخالية من التلوث الضوئي | [واس](https://cc.spa.gov.sa/ar/news/50164) |
+| `photos/spa-50154.jpg` | طرق تاريخية بين الجبال في منطقة الباحة عمرها يتجاوز ألفي عام | [واس](https://cc.spa.gov.sa/ar/news/50152) |
+| `photos/spa-27424.jpg` | البيوت الطينية بقرى الصروف في منطقة نجران | [واس](https://cc.spa.gov.sa/ar/news/27422) |
+| `photos/spa-81664.jpg` | غروب الشمس في جازان | [واس](https://cc.spa.gov.sa/ar/news/81662) |
+| `photos/spa-28162.jpg` | قرية رجال ألمع التراثية بمنطقة عسير | [واس](https://cc.spa.gov.sa/ar/news/28160) |
+| `photos/spa-50097.jpg` | جبل أثرب على ارتفاع (2500) متر في قلب سراة الباحة | [واس](https://cc.spa.gov.sa/ar/news/50095) |
