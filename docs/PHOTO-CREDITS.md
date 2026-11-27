@@ -254,3 +254,13 @@ From the [Saudi Photos Hub](https://cc.spa.gov.sa) of the Saudi Press Agency (و
 | `photos/spa-81664.jpg` | غروب الشمس في جازان | [واس](https://cc.spa.gov.sa/ar/news/81662) |
 | `photos/spa-28162.jpg` | قرية رجال ألمع التراثية بمنطقة عسير | [واس](https://cc.spa.gov.sa/ar/news/28160) |
 | `photos/spa-50097.jpg` | جبل أثرب على ارتفاع (2500) متر في قلب سراة الباحة | [واس](https://cc.spa.gov.sa/ar/news/50095) |
+| `photos/spa-27420.jpg` | البيوت الطينية في قرى نجران | [واس](https://cc.spa.gov.sa/ar/news/27418) |
+| `photos/spa-62218.jpg` | السحب تعانق الجبل الأسود بمنطقة جازان | [واس](https://cc.spa.gov.sa/ar/news/62216) |
+| `photos/spa-87289.jpg` | شروق الشمس في العاصمة السعودية الرياض | [واس](https://cc.spa.gov.sa/ar/news/87287) |
+| `photos/spa-79309.jpg` | إحدى فعاليات قرية المسقى التراثية | [واس](https://cc.spa.gov.sa/ar/news/79306) |
+| `photos/spa-27407.jpg` | بيوت الطين في منطقة نجران تمثل روعة الفن المعماري التقليدي | [واس](https://cc.spa.gov.sa/ar/news/27405) |
+| `photos/spa-62166.jpg` | القلاع والبيوت الحجرية بمنطقة جازان | [واس](https://cc.spa.gov.sa/ar/news/62164) |
+| `photos/spa-86473.jpg` | جريان الماء في "سد المصانع" جنوب العاصمة الرياض | [واس](https://cc.spa.gov.sa/ar/news/86471) |
+| `photos/spa-91660.jpg` | مبانٍ مطلة على ساحل مدينة جدة | [واس](https://cc.spa.gov.sa/ar/news/91655) |
+| `photos/spa-48738.jpg` | قافلة من الجمال تعبر رمال العلا، وأمامها مركبة حديثة تجسّد تلاقي الأصالة والمعاصرة في مشهد واحد | [واس](https://cc.spa.gov.sa/ar/news/48736) |
+| `photos/spa-28784.jpg` | مصلّى جبل شدا الأعلى في الباحة | [واس](https://cc.spa.gov.sa/ar/news/28782) |
