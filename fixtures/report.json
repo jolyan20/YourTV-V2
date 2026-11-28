@@ -1,0 +1,71 @@
+{
+ "updated": "2026-11-28T03:13:21Z",
+ "leagues": [
+  {
+   "id": "4668",
+   "league": "دوري روشن",
+   "espn": "ksa.1",
+   "espnGames": 36,
+   "sdbGames": 6,
+   "games": 36
+  },
+  {
+   "id": "5649",
+   "league": "كأس الملك",
+   "espn": "ksa.kings.cup",
+   "espnGames": 0,
+   "sdbGames": 1,
+   "games": 0
+  },
+  {
+   "id": "5650",
+   "league": "كأس السوبر السعودي",
+   "espn": null,
+   "espnGames": null,
+   "sdbGames": 1,
+   "games": 0
+  },
+  {
+   "id": "4719",
+   "league": "أبطال آسيا للنخبة",
+   "espn": "afc.champions",
+   "espnGames": 17,
+   "sdbGames": 0,
+   "games": 17
+  },
+  {
+   "id": "4480",
+   "league": "دوري أبطال أوروبا",
+   "espn": "uefa.champions",
+   "espnGames": 18,
+   "sdbGames": 2,
+   "games": 18
+  },
+  {
+   "id": "4328",
+   "league": "الدوري الإنجليزي",
+   "espn": "eng.1",
+   "espnGames": 60,
+   "sdbGames": 4,
+   "games": 60
+  },
+  {
+   "id": "4335",
+   "league": "الدوري الإسباني",
+   "espn": "esp.1",
+   "espnGames": 43,
+   "sdbGames": 4,
+   "games": 43
+  },
+  {
+   "id": "4332",
+   "league": "الدوري الإيطالي",
+   "espn": "ita.1",
+   "espnGames": 40,
+   "sdbGames": 4,
+   "games": 41
+  }
+ ],
+ "clubsSearched": 2,
+ "clubsKnown": 120
+}
